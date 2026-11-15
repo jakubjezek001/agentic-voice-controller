@@ -1,0 +1,22 @@
+# Optional background service: analyzes every recording that lands in ./data/inbox.
+# Recording itself runs natively (`./vc record ...`): Docker on macOS/Windows has no microphone.
+#
+#   docker compose up -d --build      start
+#   docker compose logs -f            follow
+#   docker compose run --rm worker vc bank train
+#   docker compose down               stop
+name: voice-coach
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: voice-coach:latest
+    command: ["voicecoach", "watch", "--interval", "10"]
+    volumes:
+      - ./data:/data
+    environment:
+      VOICECOACH_DATA: /data
+      HF_HOME: /data/cache/hf
+    restart: unless-stopped

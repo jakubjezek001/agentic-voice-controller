@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Private data: recordings, transcripts, voice bank, models
+data/*
+!data/README.md
+
+# Secrets
+.env
