@@ -209,10 +209,10 @@ def _text_arg(value: str | None) -> str | None:
     return value
 
 
-def cmd_talk_start(args, paths, cfg) -> int:
-    from agentic_voice_controller import talk
+def cmd_discuss_start(args, paths, cfg) -> int:
+    from agentic_voice_controller import discuss
 
-    st = talk.start(paths, cfg, name=args.name, barge_in=args.barge_in, language=args.language,
+    st = discuss.start(paths, cfg, name=args.name, barge_in=args.barge_in, language=args.language,
                     device=args.device, input_file=args.input_file, tts=args.tts, keep_audio=args.keep_audio)
     st.pop("token", None)
     if args.json:
@@ -244,10 +244,10 @@ def _print_turn(res: dict) -> None:
         print(f"USER ({res.get('language')}): {res.get('text')}")
 
 
-def cmd_talk_turn(args, paths, cfg) -> int:
-    from agentic_voice_controller import talk
+def cmd_discuss_turn(args, paths, cfg) -> int:
+    from agentic_voice_controller import discuss
 
-    res = talk.turn(paths, _text_arg(args.say), args.lang, args.wait)
+    res = discuss.turn(paths, _text_arg(args.say), args.lang, args.wait)
     if args.json:
         _print_json(res)
     else:
@@ -255,15 +255,15 @@ def cmd_talk_turn(args, paths, cfg) -> int:
     return 0
 
 
-def cmd_talk_say(args, paths, cfg) -> int:
-    from agentic_voice_controller import talk
+def cmd_discuss_say(args, paths, cfg) -> int:
+    from agentic_voice_controller import discuss
 
     text = _text_arg(args.text) or ""
-    if talk.status(paths).get("running"):
-        res = talk.say(paths, text, args.lang)
+    if discuss.status(paths).get("running"):
+        res = discuss.say(paths, text, args.lang)
     else:
         lang = args.lang or cfg["general"].get("language") or (cfg["conversation"].get("languages") or ["en"])[0]
-        res = talk.speak_once(cfg, text, lang)
+        res = discuss.speak_once(cfg, text, lang)
     if args.json:
         _print_json(res)
     else:
@@ -272,13 +272,13 @@ def cmd_talk_say(args, paths, cfg) -> int:
     return 0
 
 
-def cmd_talk_stop(args, paths, cfg) -> int:
-    from agentic_voice_controller import talk
+def cmd_discuss_stop(args, paths, cfg) -> int:
+    from agentic_voice_controller import discuss
 
-    res = talk.stop(paths, _text_arg(args.say), args.lang)
+    res = discuss.stop(paths, _text_arg(args.say), args.lang)
     if args.analyze and not (res.get("audio") and Path(res["audio"]).exists()):
         res["note"] = ("no voice analysis: no audio was kept, only the text. Start the conversation with "
-                       "`vc talk start --keep-audio` to get one.")
+                       "`vc discuss start --keep-audio` to get one.")
     if args.analyze and res.get("audio") and Path(res["audio"]).exists():
         from agentic_voice_controller.pipeline import analyze
 
@@ -286,7 +286,7 @@ def cmd_talk_stop(args, paths, cfg) -> int:
 
         from agentic_voice_controller.config import read_json
 
-        name = "talk-" + Path(res["dir"]).name.split("_", 2)[-1] if "_" in Path(res["dir"]).name else "talk"
+        name = "discuss-" + Path(res["dir"]).name.split("_", 2)[-1] if "_" in Path(res["dir"]).name else "discuss"
         conv = read_json(Path(res["dir"]) / "conversation.json") or {}
         langs = Counter(t.get("lang") for t in conv.get("turns", []) if t.get("who") == "you" and t.get("lang"))
         language = langs.most_common(1)[0][0] if langs else None
@@ -307,10 +307,10 @@ def cmd_talk_stop(args, paths, cfg) -> int:
     return 0
 
 
-def cmd_talk_status(args, paths, cfg) -> int:
-    from agentic_voice_controller import talk
+def cmd_discuss_status(args, paths, cfg) -> int:
+    from agentic_voice_controller import discuss
 
-    st = talk.status(paths)
+    st = discuss.status(paths)
     st.pop("token", None)
     if args.json:
         _print_json(st)
@@ -319,13 +319,13 @@ def cmd_talk_status(args, paths, cfg) -> int:
               f"{'you are talking' if st.get('in_speech') else 'quiet'}, mic level {st.get('level_dbfs')} dBFS.")
         print(f"folder: {st.get('dir')}")
     elif st.get("stale"):
-        print(f"The conversation process died. Its files are in {st.get('dir')}. See data/state/talk.log.")
+        print(f"The conversation process died. Its files are in {st.get('dir')}. See data/state/discuss.log.")
     else:
         print("No conversation running.")
     return 0
 
 
-def cmd_talk_voices(args, paths, cfg) -> int:
+def cmd_discuss_voices(args, paths, cfg) -> int:
     from agentic_voice_controller.tts import is_novelty, list_voices, pick_voice
 
     voices = list_voices()
@@ -348,8 +348,8 @@ def cmd_talk_voices(args, paths, cfg) -> int:
     return 0
 
 
-def cmd_talk_run(args, paths, cfg) -> int:
-    from agentic_voice_controller.talk import run_daemon
+def cmd_discuss_run(args, paths, cfg) -> int:
+    from agentic_voice_controller.discuss import run_daemon
 
     barge = None if args.barge_in is None else args.barge_in == "1"
     keep = None if args.keep_audio is None else args.keep_audio == "1"
@@ -543,8 +543,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-minutes", type=float, default=180)
     s.set_defaults(func=cmd_record_run)
 
-    t = sub.add_parser("talk", help="conversation mode: talk out loud with the agent (voice-discuss skill)")
-    ts = t.add_subparsers(dest="talk_cmd", required=True)
+    t = sub.add_parser("discuss", help="conversation mode: discuss out loud with the agent (voice-discuss skill)")
+    ts = t.add_subparsers(dest="discuss_cmd", required=True)
     s = ts.add_parser("start", help="open the microphone and wait for turns")
     s.add_argument("--name", help="topic, used for the folder name")
     s.add_argument("--barge-in", dest="barge_in", action="store_true", default=None,
@@ -559,32 +559,32 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--input-file", help=argparse.SUPPRESS)
     s.add_argument("--tts", help=argparse.SUPPRESS)
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_talk_start)
+    s.set_defaults(func=cmd_discuss_start)
     s = ts.add_parser("turn", help="speak the agent's reply, then wait for the user's next turn")
     s.add_argument("--say", help="the reply to speak; - reads it from stdin")
     s.add_argument("--lang", help="language of the reply, e.g. cs (default: the user's last language)")
     s.add_argument("--wait", type=float, default=240.0, help="seconds to wait for the user to start talking")
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_talk_turn)
+    s.set_defaults(func=cmd_discuss_turn)
     s = ts.add_parser("say", help="speak without waiting for an answer (also works without a conversation)")
     s.add_argument("text", help="the text; - reads it from stdin")
     s.add_argument("--lang")
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_talk_say)
+    s.set_defaults(func=cmd_discuss_say)
     s = ts.add_parser("stop", help="end the conversation (optionally saying goodbye first)")
     s.add_argument("--say", help="last words; - reads them from stdin")
     s.add_argument("--lang")
     s.add_argument("--analyze", action="store_true", help="also analyze your side like a recording")
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_talk_stop)
+    s.set_defaults(func=cmd_discuss_stop)
     s = ts.add_parser("status")
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_talk_status)
+    s.set_defaults(func=cmd_discuss_status)
     s = ts.add_parser("voices", help="list text-to-speech voices and the one picked per language")
     s.add_argument("--lang")
     s.add_argument("--all", action="store_true", help="include novelty voices")
     s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_talk_voices)
+    s.set_defaults(func=cmd_discuss_voices)
     s = ts.add_parser("_run")
     s.add_argument("--dir", required=True)
     s.add_argument("--name")
@@ -594,7 +594,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--device")
     s.add_argument("--input-file")
     s.add_argument("--tts")
-    s.set_defaults(func=cmd_talk_run)
+    s.set_defaults(func=cmd_discuss_run)
 
     s = sub.add_parser("import", help="copy audio files (e.g. from your phone) into the inbox")
     s.add_argument("files", nargs="+")

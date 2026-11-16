@@ -1,14 +1,14 @@
 """Conversation mode: talk out loud with the agent of a Claude Code / T3 Code thread.
 
-The agent drives the conversation (see the voice-discuss skill). `vc talk start` launches a
+The agent drives the conversation (see the voice-discuss skill). `vc discuss start` launches a
 background process that keeps the microphone open, cuts your speech into turns (Silero
 VAD), transcribes them (faster-whisper) and speaks the agent's replies (system voices,
-see tts.py). Each agent turn is one `vc talk turn --say -` call: speak the reply, wait
+see tts.py). Each agent turn is one `vc discuss turn --say -` call: speak the reply, wait
 for your next turn, print it.
 
 Because the microphone stays open between calls, nothing you say while the agent is
 thinking gets lost: it is handed over with the next turn. The commands reach the
-process over HTTP on 127.0.0.1 with a random token kept in data/state/talk.json.
+process over HTTP on 127.0.0.1 with a random token kept in data/state/discuss.json.
 Nothing leaves the machine.
 """
 
@@ -32,8 +32,8 @@ from pathlib import Path
 
 from agentic_voice_controller.config import Paths, VoiceControllerError, read_json, write_json
 
-STATE_FILE = "talk.json"
-LOG_FILE = "talk.log"
+STATE_FILE = "discuss.json"
+LOG_FILE = "discuss.log"
 HEARTBEAT_TIMEOUT = 6.0
 SR = 16000
 FRAME = 512  # samples per Silero VAD frame (32 ms)
@@ -46,7 +46,7 @@ DEFAULT_WAIT = 240.0  # seconds a turn waits for you to start talking
 _HALLUCINATIONS = ("amara.org", "titulky vytvořil", "johnyx", "subtitles by", "untertitel", "sous-titres")
 
 
-class TalkError(VoiceControllerError):
+class DiscussError(VoiceControllerError):
     pass
 
 
@@ -92,16 +92,16 @@ def _running(paths: Paths) -> dict:
         return st
     if st.get("stale"):
         (paths.state / STATE_FILE).unlink(missing_ok=True)
-        raise TalkError("The conversation process stopped unexpectedly. Start a new one with `vc talk start`.\n"
+        raise DiscussError("The conversation process stopped unexpectedly. Start a new one with `vc discuss start`.\n"
                         + _log_tail(paths))
-    raise TalkError("No conversation is running. Start one with `vc talk start`.")
+    raise DiscussError("No conversation is running. Start one with `vc discuss start`.")
 
 
 def request(st: dict, path: str, body: dict | None = None, timeout: float = 60.0) -> dict:
     req = urllib.request.Request(
         f"http://127.0.0.1:{st['port']}{path}",
         data=json.dumps(body or {}).encode("utf-8"),
-        headers={"Content-Type": "application/json", "X-Talk-Token": st["token"]},
+        headers={"Content-Type": "application/json", "X-Discuss-Token": st["token"]},
         method="POST",
     )
     try:
@@ -112,9 +112,9 @@ def request(st: dict, path: str, body: dict | None = None, timeout: float = 60.0
             msg = json.loads(e.read().decode("utf-8")).get("error")
         except Exception:
             msg = str(e)
-        raise TalkError(msg or str(e)) from e
+        raise DiscussError(msg or str(e)) from e
     except (urllib.error.URLError, ConnectionError, TimeoutError, OSError) as e:
-        raise TalkError(f"Cannot reach the conversation process ({e}). Check `vc talk status`.") from e
+        raise DiscussError(f"Cannot reach the conversation process ({e}). Check `vc discuss status`.") from e
 
 
 def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | None = None,
@@ -130,7 +130,7 @@ def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | 
     if name and slug(name):
         stem += f"_{slug(name)}"
     out_dir = paths.conversations / stem
-    args = [sys.executable, "-m", "agentic_voice_controller", "talk", "_run", "--dir", str(out_dir)]
+    args = [sys.executable, "-m", "agentic_voice_controller", "discuss", "_run", "--dir", str(out_dir)]
     if barge_in is not None:
         args += ["--barge-in", "1" if barge_in else "0"]
     if keep_audio is not None:
@@ -148,7 +148,7 @@ def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | 
         if proc.poll() is not None:
             break
         time.sleep(0.25)
-    raise TalkError("The conversation process did not start.\n" + _log_tail(paths))
+    raise DiscussError("The conversation process did not start.\n" + _log_tail(paths))
 
 
 def turn(paths: Paths, say: str | None, lang: str | None, wait: float) -> dict:
@@ -167,7 +167,7 @@ def stop(paths: Paths, text: str | None = None, lang: str | None = None) -> dict
         if st.get("stale"):
             (paths.state / STATE_FILE).unlink(missing_ok=True)
             return {"stopped": True, "dir": st.get("dir"), "note": "the process had already stopped"}
-        raise TalkError("No conversation is running.")
+        raise DiscussError("No conversation is running.")
     res = request(st, "/stop", {"say": text, "lang": lang}, timeout=600)
     deadline = time.time() + 15
     while (paths.state / STATE_FILE).exists() and time.time() < deadline:
@@ -309,7 +309,7 @@ class Conversation:
             time.sleep(0.1)
         time.sleep(0.5)
         if self.blocks == 0:
-            raise TalkError("No audio arrives from the microphone. Check `vc devices`.")
+            raise DiscussError("No audio arrives from the microphone. Check `vc devices`.")
         if self.max_peak < 2 / 32768 and not self.input_file:
             self.warnings.append(
                 "The microphone delivers pure silence: access is probably blocked. On macOS allow the app "
@@ -667,7 +667,7 @@ def _make_handler(conv: Conversation):
     from http.server import BaseHTTPRequestHandler
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "vc-talk"
+        server_version = "vc-discuss"
 
         def log_message(self, *args) -> None:
             pass
@@ -692,7 +692,7 @@ def _make_handler(conv: Conversation):
                 return False
 
         def do_POST(self) -> None:
-            if not secrets.compare_digest(self.headers.get("X-Talk-Token", ""), conv.token):
+            if not secrets.compare_digest(self.headers.get("X-Discuss-Token", ""), conv.token):
                 return self._send(403, {"error": "bad token"})
             try:
                 n = int(self.headers.get("Content-Length") or 0)

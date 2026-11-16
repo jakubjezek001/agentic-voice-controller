@@ -21,7 +21,7 @@ spoken conversation, and to turn the reports into honest coaching.
 - `voice-record`: start / stop / status of microphone recording
 - `voice-analyze`: analyze a recording and write `coaching.md`
 - `voice-bank`: build the voice bank, train the personal models, read their accuracy
-- `voice-discuss`: conversation mode. The user talks, you answer by voice (`vc talk`), notes at the end
+- `voice-discuss`: conversation mode. The user talks, you answer by voice (`vc discuss`), notes at the end
 
 ## Token economy and agents (2026-11-16)
 
@@ -46,7 +46,7 @@ text, and it hands work down to the cheapest tier that loses no quality. Playboo
   `transcribe.py` (faster-whisper), `speakers.py` (WavLM embeddings, clustering, voice profile),
   `prosody.py` (pace, pauses, fillers, Praat pitch/loudness), `emotion.py` (generic + personal),
   `bank.py` (voice bank, training), `report.py` (report.md), `recorder.py`, `watch.py`, `config.py`,
-  `talk.py` (conversation mode: background listener with VAD + STT, local HTTP control),
+  `discuss.py` (conversation mode: background listener with VAD + STT, local HTTP control),
   `tts.py` (system voices: macOS `say`, Windows SAPI, Linux espeak-ng; playback).
 - `data/` (git-ignored): settings, recordings, sessions, conversations, voice bank, models, model cache.
   `VC_DATA` overrides its location (Docker uses `/data`).

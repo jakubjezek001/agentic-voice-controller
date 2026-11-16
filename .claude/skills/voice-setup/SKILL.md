@@ -45,8 +45,8 @@ A headset is needed, so the microphone does not pick up the other person. Smoke 
 while `./vc record status` runs; the incoming level must rise. Windows: VB-Cable or
 "Stereo Mix". The result is one stereo file (left = you, right = them) with exact speaker labels.
 
-Conversation mode: `./vc talk voices` shows the voice picked per language, and
-`./vc talk say --lang en "Hello, I can talk now."` plays it once. On macOS, suggest
+Conversation mode: `./vc discuss voices` shows the voice picked per language, and
+`./vc discuss say --lang en "Hello, I can talk now."` plays it once. On macOS, suggest
 downloading a Premium or Enhanced voice for each language the user speaks (System
 Settings > Accessibility > Spoken Content > System Voice > Manage Voices), then set it
 under `[conversation.voices]`.
