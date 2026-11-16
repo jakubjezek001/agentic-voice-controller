@@ -36,6 +36,15 @@ Then a 5-second smoke test: `./vc record start --name setup-test`, wait 5 s,
 `./vc record stop --analyze --json`. Confirm `report.md` exists in the session folder,
 then delete that test session folder.
 
+Both sides of online calls (optional, macOS): to record the other person as a separate
+stream, the user installs BlackHole (`brew install blackhole-2ch`), creates a Multi-Output
+Device in Audio MIDI Setup with their headphones/headset plus BlackHole 2ch, and makes it
+the system output. Check that `./vc devices` lists `BlackHole 2ch`, then set
+`system_device = "BlackHole 2ch"` under `[recording]` in `data/config.toml` (a headset
+is needed, so the microphone does not pick up the other person). Smoke test: play a sound
+while `./vc record status` runs; the incoming level must rise. Windows: VB-Cable or
+"Stereo Mix". The result is a two-channel file (1 = you, 2 = them) with exact speaker labels.
+
 Conversation mode: `./vc talk voices` shows the voice picked per language, and
 `./vc talk say --lang en "Hello, I can talk now."` plays it once. On macOS, suggest
 downloading a Premium or Enhanced voice for each language the user speaks (System

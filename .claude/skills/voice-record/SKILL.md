@@ -14,17 +14,27 @@ the project root. Recording always runs natively, even when the Docker worker is
 
 1. Run `./vc record status`. If a recording is already running, say so and stop here.
 2. Run `./vc record start --name <name>`. Use the name from the arguments, slugified
-   (e.g. `client-acme`). With no name, start without `--name`.
+   (e.g. `client-acme`). With no name, start without `--name`. If `recording.system_device`
+   is set in `data/config.toml` (or the user asks to capture the other side of an online
+   call), both sides are recorded as two channels: your microphone and the incoming audio.
+   Add `--system-device "<loopback name>"` to turn it on for one recording, or
+   `--system-device off` to turn it off.
 3. Wait about 3 seconds, then run `./vc record status`. If the level is below -60 dBFS
    or missing, warn that the microphone looks silent. On macOS, check that the terminal
    app has microphone access (System Settings > Privacy & Security > Microphone). Also
    check that the right device is selected (`./vc devices`, `--device <name>`).
-4. Tell the user it is recording and which device it uses. Remind them once per session
+   For a two-sided recording `status` shows two levels. The incoming one is only high
+   while the other person talks or something plays; if it stays at -60 dBFS or below during
+   a call, the system output is not routed through the loopback device (see `voice-setup`).
+4. Tell the user it is recording and which device(s) it uses. Remind them once per session
    that the other person should know the call is recorded.
 
 ## stop
 
-1. Run `./vc record stop`. It prints the saved file and its length.
+1. Run `./vc record stop`. It prints the saved file and its length. A two-sided
+   recording is one stereo file (left = the user, right = the others). Only if the user
+   wants one file per side, add `--split` (or run `./vc record split <file>` later): it
+   writes `<name>.tracks/me.wav` and `<name>.tracks/others.wav`.
 2. Unless the user said not to, continue with the `voice-analyze` skill on that file
    (`./vc analyze --latest`). If the user prefers the Docker worker, use
    `./vc record stop --inbox` instead and say the session will appear in

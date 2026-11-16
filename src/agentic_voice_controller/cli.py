@@ -120,12 +120,17 @@ def cmd_models_download(args, paths, cfg) -> int:
 def cmd_record_start(args, paths, cfg) -> int:
     from agentic_voice_controller import recorder
 
-    st = recorder.start(paths, cfg, name=args.name, device=args.device, max_minutes=args.max_minutes)
+    st = recorder.start(paths, cfg, name=args.name, device=args.device, max_minutes=args.max_minutes,
+                        system_device=args.system_device)
     if args.json:
         _print_json(st)
     else:
         print(f"Recording to {st['file']}")
-        print(f"device: {st.get('device')}. Stop with `vc record stop`.")
+        if st.get("system_device"):
+            print(f"you: {st.get('device')} (channel 1), incoming audio: {st['system_device']} (channel 2). "
+                  "Stop with `vc record stop`.")
+        else:
+            print(f"device: {st.get('device')}. Stop with `vc record stop`.")
     return 0
 
 
@@ -135,9 +140,15 @@ def cmd_record_stop(args, paths, cfg) -> int:
     last = recorder.stop(paths)
     f = Path(last["file"])
     out = {"file": str(f), "seconds": last.get("seconds")}
+    if args.split and recorder.sides_file(f).exists():  # two-sided: also one file per side
+        out["tracks"] = {k: str(v) for k, v in recorder.split_sides(f).items()}
     if args.inbox:
+        from agentic_voice_controller.recorder import sides_file
+
         dest = paths.inbox / f.name
         shutil.move(str(f), str(dest))
+        if sides_file(f).exists():
+            shutil.move(str(sides_file(f)), str(sides_file(dest)))
         out["file"] = str(dest)
         out["note"] = "moved to the inbox for the watcher"
     elif args.analyze:
@@ -148,6 +159,8 @@ def cmd_record_stop(args, paths, cfg) -> int:
         _print_json(out)
     else:
         print(f"Stopped. {out['seconds']} s saved to {out['file']}")
+        if out.get("tracks"):
+            print(f"you: {out['tracks']['me']}\nothers: {out['tracks']['others']}")
         if out.get("session"):
             print(f"Session: {out['session']}")
     return 0
@@ -161,8 +174,14 @@ def cmd_record_status(args, paths, cfg) -> int:
         _print_json(st)
     elif st.get("running"):
         lvl = st.get("level_dbfs")
-        print(f"Recording {st.get('seconds', 0):.0f} s to {st['file']} (device {st.get('device')}, "
-              f"level {lvl if lvl is not None else '-'} dBFS)")
+        shown = lambda v: v if v is not None else "-"  # noqa: E731
+        if st.get("system_device"):
+            print(f"Recording {st.get('seconds', 0):.0f} s to {st['file']} (you: {st.get('device')}, level "
+                  f"{shown(lvl)} dBFS; incoming audio: {st['system_device']}, level "
+                  f"{shown(st.get('system_level_dbfs'))} dBFS)")
+        else:
+            print(f"Recording {st.get('seconds', 0):.0f} s to {st['file']} (device {st.get('device')}, "
+                  f"level {shown(lvl)} dBFS)")
         if lvl is not None and lvl < -60:
             print("Very quiet input: is the right microphone selected and allowed?")
     elif st.get("stale"):
@@ -173,10 +192,24 @@ def cmd_record_status(args, paths, cfg) -> int:
     return 0
 
 
+def cmd_record_split(args, paths, cfg) -> int:
+    from agentic_voice_controller.recorder import RecorderError, split_sides
+
+    f = Path(args.file).expanduser()
+    if not f.is_file():
+        raise RecorderError(f"File not found: {f}")
+    tracks = split_sides(f)
+    if args.json:
+        _print_json({k: str(v) for k, v in tracks.items()})
+    else:
+        print(f"you: {tracks['me']}\nothers: {tracks['others']}")
+    return 0
+
+
 def cmd_record_run(args, paths, cfg) -> int:
     from agentic_voice_controller.recorder import run_background
 
-    run_background(paths, cfg, Path(args.out), args.device, args.max_minutes)
+    run_background(paths, cfg, Path(args.out), args.device, args.max_minutes, args.system_device)
     return 0
 
 
@@ -491,25 +524,35 @@ def build_parser() -> argparse.ArgumentParser:
     s = m.add_parser("download", help="download all models now (otherwise on first use)")
     s.set_defaults(func=cmd_models_download)
 
-    r = sub.add_parser("record", help="record from the microphone in the background")
+    r = sub.add_parser("record", help="record the microphone (and the incoming call audio) in the background")
     rs = r.add_subparsers(dest="record_cmd", required=True)
     s = rs.add_parser("start")
     s.add_argument("--name", help="short label for the recording, e.g. client-call")
     s.add_argument("--device", help="input device name substring or index")
+    s.add_argument("--system-device", dest="system_device",
+                   help="loopback input with the incoming call audio (e.g. 'BlackHole 2ch'): records both sides "
+                        "as two channels. 'off' = microphone only")
     s.add_argument("--max-minutes", type=float)
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_record_start)
     s = rs.add_parser("stop")
     s.add_argument("--analyze", action="store_true", help="analyze the recording right away")
+    s.add_argument("--split", action="store_true",
+                   help="two-sided recording: also write one file per side (<name>.tracks/me.wav, others.wav)")
     s.add_argument("--inbox", action="store_true", help="hand the recording to the inbox watcher (Docker)")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_record_stop)
     s = rs.add_parser("status")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_record_status)
+    s = rs.add_parser("split", help="split a two-sided recording into one file per side (me.wav, others.wav)")
+    s.add_argument("file")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_record_split)
     s = rs.add_parser("_run")
     s.add_argument("--out", required=True)
     s.add_argument("--device")
+    s.add_argument("--system-device", dest="system_device")
     s.add_argument("--max-minutes", type=float, default=180)
     s.set_defaults(func=cmd_record_run)
 

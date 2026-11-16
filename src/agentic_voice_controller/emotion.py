@@ -85,7 +85,10 @@ def _weighted(items: list[tuple[float, dict]]) -> dict[str, float]:
     return {k: round(v / total, 3) for k, v in sorted(acc.items(), key=lambda kv: -kv[1])}
 
 
-def score_turns(audio: np.ndarray, turns: list[dict], cfg: dict, paths: Paths) -> dict:
+def score_turns(audio: np.ndarray, turns: list[dict], cfg: dict, paths: Paths,
+                audio_by_speaker: dict[str, np.ndarray] | None = None) -> dict:
+    """Score each turn's voice. With separate channels (a two-sided recording), each speaker is
+    scored on their own channel, so the other side's audio never leaks into the reading."""
     ec = cfg["emotion"]
     model = get_model(cfg)
     personal = load_personal(paths, cfg)
@@ -99,7 +102,7 @@ def score_turns(audio: np.ndarray, turns: list[dict], cfg: dict, paths: Paths) -
         for s, e in pairwise(np.linspace(t["start"], t["end"], n + 1)):
             if e - s < 1.0:
                 continue
-            probs, feats = model.run(A.cut(audio, s, e))
+            probs, feats = model.run(A.cut((audio_by_speaker or {}).get(t["speaker"], audio), s, e))
             item = {
                 "start": round(float(s), 2),
                 "end": round(float(e), 2),

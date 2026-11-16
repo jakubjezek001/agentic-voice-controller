@@ -61,6 +61,11 @@ min_clips_per_label = 3
 [recording]
 # Input device: "" = system default, or a name substring / index from `vc devices`.
 device = ""
+# Incoming call audio: a loopback input such as "BlackHole 2ch" (macOS) or "CABLE Output" /
+# "Stereo Mix" (Windows). Set it to record BOTH sides as two channels of one file:
+# channel 0 = your microphone, channel 1 = the incoming audio. "" = microphone only.
+# `vc record start --system-device <name>` overrides it, `--system-device off` disables it.
+system_device = ""
 samplerate = 16000
 channels = 1
 max_minutes = 180
