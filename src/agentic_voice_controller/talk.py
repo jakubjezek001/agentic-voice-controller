@@ -119,7 +119,7 @@ def request(st: dict, path: str, body: dict | None = None, timeout: float = 60.0
 
 def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | None = None,
           language: str | None = None, device: str | None = None,
-          input_file: str | None = None, tts: str | None = None) -> dict:
+          input_file: str | None = None, tts: str | None = None, keep_audio: bool | None = None) -> dict:
     from agentic_voice_controller.recorder import spawn_background
 
     st = status(paths)
@@ -133,6 +133,8 @@ def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | 
     args = [sys.executable, "-m", "agentic_voice_controller", "talk", "_run", "--dir", str(out_dir)]
     if barge_in is not None:
         args += ["--barge-in", "1" if barge_in else "0"]
+    if keep_audio is not None:
+        args += ["--keep-audio", "1" if keep_audio else "0"]
     for flag, value in (("--language", language), ("--device", device), ("--input-file", input_file),
                         ("--tts", tts), ("--name", name)):
         if value:
@@ -216,7 +218,7 @@ class StreamingVAD:
 class Conversation:
     def __init__(self, paths: Paths, cfg: dict, out_dir: Path, *, name: str | None = None,
                  barge_in: bool | None = None, language: str | None = None, device: str | None = None,
-                 input_file: str | None = None, tts: str | None = None):
+                 input_file: str | None = None, tts: str | None = None, keep_audio: bool | None = None):
         import numpy as np
 
         from agentic_voice_controller.tts import Player, make_tts, resolve_output_device
@@ -226,6 +228,7 @@ class Conversation:
         c = cfg["conversation"]
         self.c = c
         self.barge_in = bool(c.get("barge_in")) if barge_in is None else barge_in
+        self.keep_audio = bool(c.get("keep_audio")) if keep_audio is None else keep_audio
         self.language = (language or cfg["general"].get("language") or "").strip()
         self.languages = [str(x) for x in (c.get("languages") or []) if str(x).strip()]
         self.last_lang = self.language or (self.languages[0] if self.languages else "")
@@ -290,7 +293,7 @@ class Conversation:
         self.vad = StreamingVAD()
         model = self.stt_model()
         list(model.transcribe(np.zeros(SR, dtype=np.float32), language="en", beam_size=1)[0])  # warm up
-        if self.c.get("keep_audio", True):
+        if self.keep_audio:
             self.wav = wave.open(str(self.dir / "mic.wav"), "wb")
             self.wav.setnchannels(1)
             self.wav.setsampwidth(2)

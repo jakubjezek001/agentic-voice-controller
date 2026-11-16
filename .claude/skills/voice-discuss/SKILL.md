@@ -19,6 +19,9 @@ stays on this machine.
    - `--barge-in` if the user wears headphones and wants to interrupt you by talking.
      Never with laptop speakers: you would interrupt yourself.
    - `--language cs` (or another code) if the user says which language they will speak.
+   - `--keep-audio` only if the user wants feedback on how they spoke (voice analysis at the
+     end). By default no audio is saved: each turn is transcribed as they speak and only the
+     text is kept.
 2. If the output has a `WARNING` about pure silence, stop with `./vc talk stop`. Tell the
    user the microphone is blocked: on macOS, allow the app that runs this session
    (T3 Code, Terminal, ...) in System Settings > Privacy & Security > Microphone, then
@@ -104,7 +107,7 @@ End when the user says they are done ("that's all", "let's stop", "bye", "díky,
 vše", "konec") or after two silences:
 
 1. Run `./vc talk stop --lang <xx> --say - <<'EOF'` with one short goodbye sentence
-   saying you'll write up the notes. Add `--analyze` if the user wants feedback on how
+   saying you'll write up the notes. Add `--analyze` (needs `--keep-audio` at the start) if the user wants feedback on how
    they spoke. That runs the normal voice analysis on their side and prints the session
    folder. Then use the `voice-analyze` skill on it.
 2. Write `notes.md` into the conversation folder printed by `stop`

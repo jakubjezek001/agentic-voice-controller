@@ -61,11 +61,12 @@ min_clips_per_label = 3
 [recording]
 # Input device: "" = system default, or a name substring / index from `vc devices`.
 device = ""
-# Incoming call audio: a loopback input such as "BlackHole 2ch" (macOS) or "CABLE Output" /
-# "Stereo Mix" (Windows). Set it to record BOTH sides as two channels of one file:
-# channel 0 = your microphone, channel 1 = the incoming audio. "" = microphone only.
-# `vc record start --system-device <name>` overrides it, `--system-device off` disables it.
-system_device = ""
+# Incoming call audio, from a loopback input such as "BlackHole 2ch" (macOS) or "CABLE Output" /
+# "Stereo Mix" (Windows). With one, every recording is a stereo file: left = your microphone,
+# right = the incoming audio. "auto" = use the first loopback input found (if there is none,
+# only your microphone is recorded), "off" = microphone only, or a device name / index.
+# `vc record start --system-device <name>` overrides it for one recording.
+system_device = "auto"
 samplerate = 16000
 channels = 1
 max_minutes = 180
@@ -102,8 +103,10 @@ output_device = ""
 # Stop listening when the agent has not asked for a turn for this long.
 idle_minutes = 5
 max_minutes = 180
-# Keep your side of the conversation as mic.wav (needed for `vc talk stop --analyze`).
-keep_audio = true
+# Conversations are kept as text only (transcript.md): each turn is transcribed as you speak.
+# true = also save your side as mic.wav, needed for the voice analysis of `vc talk stop --analyze`.
+# `vc talk start --keep-audio` turns it on for one conversation.
+keep_audio = false
 
 [conversation.voices]
 # Voice per language, a name from `vc talk voices`. Missing = best installed voice.
