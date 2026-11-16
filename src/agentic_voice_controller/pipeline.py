@@ -18,9 +18,11 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+
 from agentic_voice_controller import audio as A
 from agentic_voice_controller.config import Paths, VoiceControllerError, log, read_json, with_overrides, write_json
-from agentic_voice_controller.recorder import slug
+from agentic_voice_controller.recorder import sides_file, slug
 
 TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}_\d{6})_?(.*)$")
 
@@ -53,6 +55,40 @@ def build_turns(words: list[dict], speakers: list[str], split_gap: float = 5.0) 
     return turns
 
 
+def _load_sides(src: Path, sdir: Path) -> dict[str, np.ndarray] | None:
+    """The two sides of a two-sided recording (`vc record start --system-device`), else None."""
+    sides = read_json(sdir / "sides.json")
+    if not sides:
+        return None
+    arrays = A.load_channels(src)
+    chan = {name: arrays[int(i)] for name, i in sides.items() if int(i) < len(arrays)}
+    if len(chan) < 2:
+        return None
+    n = min(len(a) for a in chan.values())
+    return {name: a[:n] for name, a in chan.items()}
+
+
+def _transcribe_sides(chan: dict[str, np.ndarray], cfg: dict, T) -> dict:
+    """Transcribe each side on its own and merge the words by time. Each side can be in its own language."""
+    words: list[dict] = []
+    per_side: dict[str, dict] = {}
+    for name, audio in chan.items():
+        r = T.transcribe(audio, cfg)
+        per_side[name] = r
+        words += [{**w, "spk": name} for w in r["words"]]
+    words.sort(key=lambda w: (w["start"], w["end"]))
+    main = next((per_side[n] for n in ("ME", *per_side) if n in per_side and per_side[n]["words"]), next(iter(per_side.values())))
+    return {
+        "model": main["model"],
+        "language": main["language"],
+        "language_probability": main["language_probability"],
+        "duration": max(r["duration"] for r in per_side.values()),
+        "words": words,
+        "sides": True,
+        "side_languages": {n: r["language"] for n, r in per_side.items() if r["words"]},
+    }
+
+
 def run_pipeline(src: Path, sdir: Path, paths: Paths, cfg: dict, n_speakers: int, me_label: str | None) -> dict:
     from agentic_voice_controller import emotion as E
     from agentic_voice_controller import prosody as P
@@ -60,30 +96,42 @@ def run_pipeline(src: Path, sdir: Path, paths: Paths, cfg: dict, n_speakers: int
     from agentic_voice_controller import transcribe as T
 
     log(f"decoding {src.name}")
-    audio = A.load_audio(src)
+    chan = _load_sides(src, sdir)
+    audio = A.load_audio(src) if chan is None else np.mean(np.stack(list(chan.values())), axis=0)
     total = len(audio) / A.SR
     if total < 1:
         raise VoiceControllerError("The recording is empty or too short.")
 
     cached = read_json(sdir / "whisper.json")
     want_lang = cfg["general"].get("language") or None
-    if cached and cached.get("model") == cfg["transcription"]["model"] and (want_lang in (None, cached.get("language"))):
+    if (cached and cached.get("model") == cfg["transcription"]["model"]
+            and bool(cached.get("sides")) == (chan is not None)
+            and (want_lang in (None, cached.get("language")))):
         log("reusing the existing transcription")
         tr = cached
     else:
         log(f"transcribing {A.fmt_time(total)} with whisper '{cfg['transcription']['model']}' (the slow part)")
-        tr = T.transcribe(audio, cfg)
+        tr = T.transcribe(audio, cfg) if chan is None else _transcribe_sides(chan, cfg, T)
         write_json(sdir / "whisper.json", tr)
     words = tr["words"]
     if not words:
         raise VoiceControllerError("No speech was found in the recording.")
 
-    log("telling speakers apart")
-    profile = S.load_profile(paths)
-    try:
-        dia = S.diarize(audio, words, cfg, profile, n_speakers, me_label)
-    except ValueError as e:
-        raise VoiceControllerError(str(e)) from e
+    if chan is not None:
+        log("two-sided recording: you = microphone channel, others = incoming audio channel")
+        dia = {
+            "word_speakers": [w["spk"] for w in words],
+            "speakers": {name: {"windows": None, "similarity_to_you": None} for name in chan},
+            "method": "separate channels (your microphone / the incoming audio)",
+            "profile_threshold": None,
+        }
+    else:
+        log("telling speakers apart")
+        profile = S.load_profile(paths)
+        try:
+            dia = S.diarize(audio, words, cfg, profile, n_speakers, me_label)
+        except ValueError as e:
+            raise VoiceControllerError(str(e)) from e
     turns = build_turns(words, dia["word_speakers"])
 
     log("measuring pace, pauses, fillers and pitch")
@@ -92,10 +140,10 @@ def run_pipeline(src: Path, sdir: Path, paths: Paths, cfg: dict, n_speakers: int
     for t in turns:
         t.update(P.turn_stats(t["words"], float(ac["pause_seconds"])))
         t["fillers"] = dict(P.count_fillers([w["word"] for w in t["words"]], fillers))
-        t["voice"] = P.voice_features(A.cut(audio, t["start"], t["end"]))
+        t["voice"] = P.voice_features(A.cut(chan[t["speaker"]] if chan else audio, t["start"], t["end"]))
 
     log("scoring emotion")
-    emotion = E.score_turns(audio, turns, cfg, paths)
+    emotion = E.score_turns(audio, turns, cfg, paths, audio_by_speaker=chan)
 
     names = list(dict.fromkeys(t["speaker"] for t in turns))
     summary = {spk: P.summarize(turns, spk, float(ac["long_pause_seconds"])) for spk in names}
@@ -151,6 +199,9 @@ def analyze(target: Path, paths: Paths, cfg: dict, *, move: bool = False, name: 
         except FileNotFoundError:
             shutil.rmtree(sdir, ignore_errors=True)
             raise
+
+        if sides_file(target).exists():
+            (shutil.move if move else shutil.copy2)(str(sides_file(target)), str(sdir / "sides.json"))
 
     cfg = with_overrides(cfg, language=language, speakers=speakers)
     n_speakers = int(cfg["general"]["speakers"])

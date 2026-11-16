@@ -29,6 +29,29 @@ def load_audio(path: Path | str) -> np.ndarray:
     return np.concatenate(parts).astype(np.float32) / 32768.0
 
 
+def load_channels(path: Path | str) -> list[np.ndarray]:
+    """A mono or stereo file -> one float32 array per channel at 16 kHz (for two-sided recordings)."""
+    import av
+
+    with av.open(str(path)) as container:
+        if not container.streams.audio:
+            raise ValueError(f"{path} has no audio stream")
+        stream = container.streams.audio[0]
+        n = 1 if (stream.channels or 1) == 1 else 2
+        resampler = av.AudioResampler(format="s16p", layout="mono" if n == 1 else "stereo", rate=SR)
+        parts: list[list[np.ndarray]] = [[] for _ in range(n)]
+        frames = [f for fr in container.decode(stream) for f in resampler.resample(fr)]
+        frames += list(resampler.resample(None))
+        for f in frames:
+            arr = f.to_ndarray().reshape(n, -1)
+            for c in range(n):
+                parts[c].append(arr[c])
+    return [
+        (np.concatenate(p).astype(np.float32) / 32768.0) if p else np.zeros(0, dtype=np.float32)
+        for p in parts
+    ]
+
+
 def duration_seconds(path: Path | str) -> float:
     import av
 

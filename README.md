@@ -167,8 +167,27 @@ because Docker runs the models in a Linux VM on CPU only.
 - Phone recorder app: copy the file to `data/inbox/` (or `vc import`).
 - On this computer: `vc record start` records the default microphone. With headphones
   that is only your side, which is fine for your delivery but loses the other person.
-  To capture both sides of a computer call, use a loopback device (BlackHole on macOS,
-  VB-Cable or "Stereo Mix" on Windows) and select it with `--device`.
+- Both sides of a computer call (Google Meet, Zoom, ...), as two separate streams: route the
+  call audio into a loopback device and name it with `--system-device` (or set
+  `recording.system_device`). The file then has two channels: **channel 1 = your microphone,
+  channel 2 = the incoming audio**. The analysis transcribes each channel on its own, so
+  who said what is exact (no guessing from the voice) and each side can be in its own
+  language. Pitch, loudness and emotion are measured on each person's own channel.
+
+  macOS (BlackHole): `brew install blackhole-2ch`, then in Audio MIDI Setup create a
+  **Multi-Output Device** with your headphones/headset and BlackHole 2ch, and make it the
+  system output (you still hear the call). Then
+  `vc record start --device "<your mic>" --system-device "BlackHole 2ch"`.
+  Windows: VB-Cable or "Stereo Mix" as the system device.
+
+  The recording is one stereo file: **left = you, right = others**. It is what `vc analyze`
+  reads and it plays with you in one ear and them in the other. If you need one file per
+  side (to share or edit one of them), use `vc record stop --split` or
+  `vc record split <file>`: they write `<name>.tracks/me.wav` and `<name>.tracks/others.wav`.
+
+  Use a headset or headphones. With open speakers the microphone also picks up the other
+  person, which blurs the two sides. All other people on the incoming stream count as
+  `OTHER`. If a call has several remote people, they share that one label.
 - Check the law where you and the other person are: many places need everyone's consent.
 
 ## Settings
@@ -180,6 +199,7 @@ because Docker runs the models in a Linux VM on CPU only.
 - `general.speakers`: people in a typical recording (1 for solo practice)
 - `transcription.model`: `small` (fast) ... `large-v3-turbo` (best)
 - `recording.device`: microphone name substring or index
+- `recording.system_device`: loopback input with the incoming call audio, e.g. `"BlackHole 2ch"`
 - `analysis.fillers.<lang>`: your filler words
 
 ## Platform notes
