@@ -13,8 +13,8 @@ from itertools import pairwise
 
 import numpy as np
 
-from voicecoach import audio as A
-from voicecoach.config import Paths, torch_device
+from agentic_voice_controller import audio as A
+from agentic_voice_controller.config import Paths, torch_device
 
 PERSONAL_FILE = "emotion_classifier.joblib"
 LABEL_NAMES = {"neu": "neutral", "hap": "happy", "ang": "angry", "sad": "sad"}

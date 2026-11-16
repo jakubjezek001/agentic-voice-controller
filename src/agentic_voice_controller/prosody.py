@@ -8,7 +8,7 @@ from itertools import pairwise
 
 import numpy as np
 
-from voicecoach import audio as A
+from agentic_voice_controller import audio as A
 
 _PUNCT = re.compile(r"[^\w\s']", re.UNICODE)
 

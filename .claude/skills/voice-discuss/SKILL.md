@@ -1,10 +1,10 @@
 ---
-name: voice-talk
-description: Conversation mode. The user talks out loud and you answer with a voice, turn by turn, to brainstorm or think through ideas together; ends with notes of the session. Use for /voice-talk [topic], "let's talk", "talk to me", "brainstorm out loud", "conversation mode", "voice chat".
+name: voice-discuss
+description: Conversation mode. The user talks out loud and you answer with a voice, turn by turn, to discuss, brainstorm or think through ideas together; ends with notes of the session. Use for /voice-discuss [topic], "let's discuss", "let's talk", "talk to me", "brainstorm out loud", "conversation mode", "voice chat".
 allowed-tools: Bash(./vc talk:*)
 ---
 
-# Voice talk (conversation mode)
+# Voice discuss (conversation mode)
 
 Arguments: `$ARGUMENTS` (optional topic, e.g. `pricing for the new plugin`).
 
@@ -22,7 +22,7 @@ stays on this machine.
 2. If the output has a `WARNING` about pure silence, stop with `./vc talk stop`. Tell the
    user the microphone is blocked: on macOS, allow the app that runs this session
    (T3 Code, Terminal, ...) in System Settings > Privacy & Security > Microphone, then
-   restart that app. Otherwise say nothing in chat and go straight to the first turn.
+   restart that app. Otherwise go straight to the first turn.
 
 ## The loop
 
@@ -43,18 +43,46 @@ what they said:
 - `note: the user interrupted you. They heard only: "..."`: respond to what they said.
   Don't repeat the whole reply.
 - `(silence: ...)`: run `./vc talk turn` without `--say` to keep listening. After two
-  silences in a row, end the conversation (see below).
+  silences in a row, end the conversation (see below), unless you just delivered a
+  report the user may be reading (see "Work that takes a while").
+- A turn that ends with only a half sentence ("I'm just gonna, I'm just gonna") means they
+  are still thinking: run `./vc talk turn` without `--say` and let them finish.
 
 Keep the loop tight:
 
-- Don't write chat messages between turns. The user is listening, not reading, and every
-  extra message delays your voice. Don't think at length either: answer like a person in
-  a conversation.
+- Mirror the conversation in the chat, briefly. The tool output is collapsed, so the
+  user otherwise sees nothing. In the same response as each `turn` command, write
+  the text first, then the command, in this shape and nothing more:
+  `**You:** <their last turn in one short line>` and `**Me:** <your reply, as spoken>`.
+  Keep it to those two lines so it doesn't delay your voice. Don't think at length
+  either: answer like a person in a conversation.
 - Always pass `--lang` with the language of your reply. Mirror the user's language
   (the code after `USER`) unless they ask otherwise.
-- If the user asks you to do something (check a file, look something up, write
-  something down), first run `./vc talk say --lang <xx> "Give me a moment."`, do the
-  work with your normal tools, then tell them the result with the next `turn`.
+- Voice is the short channel, the chat is the long one. Anything the user would want to
+  read rather than hear (research, comparisons, plans, drafts, code, links, sources) goes
+  into the chat in full. The voice only announces it. See "Work that takes a while".
+
+## Work that takes a while
+
+When the user asks you to do something (research a topic, check a file, look something up,
+write something down):
+
+1. Run `./vc talk say --lang <xx> "<one short line: what you're doing>"`, for example
+   "On it, I'll research that and tell you when it's ready."
+2. Do the work with your normal tools. Use more than one source and check claims; say what
+   you could not confirm. Web searches leave this machine, so keep the queries generic and
+   never put transcript text, names from calls or other private data into them.
+3. Print the full result in the chat as a proper report: a title, a short summary, the
+   findings with sources or file paths, and open questions. Detail belongs here, not in
+   the voice. If the work found nothing worth reading, say so in one chat line instead.
+4. Then the next `turn` speaks only a brief spoken summary (two or three sentences) plus
+   "the full report is in the chat, read it when you're ready and tell me what you think."
+   Mirror it with the usual `You` / `Me` lines, but do not repeat the report.
+5. After delivering a report, the user may be reading in silence. Treat silences as
+   "still reading": keep listening with `./vc talk turn` and do not end the conversation
+   after two silences. If `./vc talk status` says nothing is running (the process stops on
+   its own 5 minutes after the last turn request), run `./vc talk start --name "<same
+   topic>"` again and carry on with a short "Ready when you are."
 
 ## How to speak
 

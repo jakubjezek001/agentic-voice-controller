@@ -1,8 +1,10 @@
 [project]
-name = "voicecoach"
+name = "agentic-voice-controller"
 version = "0.1.0"
-description = "Record calls, transcribe them locally, and analyze how you speak: pace, pauses, fillers, pitch, talk balance and emotion."
+description = "Control agents by voice. Local speech recognition and spoken replies, plus call recording and voice analysis: pace, pauses, fillers, pitch, talk balance and emotion."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "numpy>=1.26",
@@ -16,8 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-voicecoach = "voicecoach.cli:main"
-vc = "voicecoach.cli:main"
+vc = "agentic_voice_controller.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.8,<0.13"]

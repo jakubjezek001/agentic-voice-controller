@@ -7,7 +7,7 @@ import time
 import traceback
 from pathlib import Path
 
-from voicecoach.config import AUDIO_EXTENSIONS, Paths, log
+from agentic_voice_controller.config import AUDIO_EXTENSIONS, Paths, log
 
 
 def _candidates(paths: Paths) -> list[Path]:
@@ -18,7 +18,7 @@ def _candidates(paths: Paths) -> list[Path]:
 
 
 def watch(paths: Paths, cfg: dict, interval: float = 10.0, once: bool = False) -> int:
-    from voicecoach.pipeline import analyze
+    from agentic_voice_controller.pipeline import analyze
 
     log(f"watching {paths.inbox} (every {interval:.0f} s)")
     sizes: dict[Path, int] = {}

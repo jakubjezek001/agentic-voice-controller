@@ -8,7 +8,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from voicecoach.config import log
+from agentic_voice_controller.config import log
 
 # Whisper drops "um"/"uh" unless the prompt shows them.
 FILLER_PROMPT = "Umm, let me think like, hmm... Okay, here's what I'm, like, thinking."

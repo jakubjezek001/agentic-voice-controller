@@ -1,4 +1,4 @@
-# Voice Coach worker: analyzes recordings that appear in /data/inbox.
+# Agentic Voice Controller worker: analyzes recordings that appear in /data/inbox.
 
 # --- build stage: compilers are needed where no prebuilt wheel exists
 #     (praat-parselmouth has none for Linux ARM64, e.g. Docker on Apple Silicon)
@@ -27,9 +27,9 @@ COPY --from=build /opt/venv /opt/venv
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
-    VOICECOACH_DATA=/data \
+    VC_DATA=/data \
     HF_HOME=/data/cache/hf
 
 WORKDIR /data
 VOLUME ["/data"]
-CMD ["voicecoach", "watch"]
+CMD ["vc", "watch"]

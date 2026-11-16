@@ -15,10 +15,10 @@ function Invoke-Step([string[]]$StepArgs) {
 }
 
 Invoke-Step @("sync")
-Invoke-Step @("run", "voicecoach", "init")
+Invoke-Step @("run", "vc", "init")
 if ($args -notcontains "--no-models") {
-    Invoke-Step @("run", "voicecoach", "models", "download")
+    Invoke-Step @("run", "vc", "models", "download")
 }
-& uv run voicecoach doctor
+& uv run vc doctor
 Write-Host ""
 Write-Host "Done. Try: .\vc.cmd record start --name test   then   .\vc.cmd record stop --analyze"

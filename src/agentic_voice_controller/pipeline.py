@@ -18,9 +18,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from voicecoach import audio as A
-from voicecoach.config import Paths, VoiceCoachError, log, read_json, with_overrides, write_json
-from voicecoach.recorder import slug
+from agentic_voice_controller import audio as A
+from agentic_voice_controller.config import Paths, VoiceControllerError, log, read_json, with_overrides, write_json
+from agentic_voice_controller.recorder import slug
 
 TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}_\d{6})_?(.*)$")
 
@@ -54,16 +54,16 @@ def build_turns(words: list[dict], speakers: list[str], split_gap: float = 5.0) 
 
 
 def run_pipeline(src: Path, sdir: Path, paths: Paths, cfg: dict, n_speakers: int, me_label: str | None) -> dict:
-    from voicecoach import emotion as E
-    from voicecoach import prosody as P
-    from voicecoach import speakers as S
-    from voicecoach import transcribe as T
+    from agentic_voice_controller import emotion as E
+    from agentic_voice_controller import prosody as P
+    from agentic_voice_controller import speakers as S
+    from agentic_voice_controller import transcribe as T
 
     log(f"decoding {src.name}")
     audio = A.load_audio(src)
     total = len(audio) / A.SR
     if total < 1:
-        raise VoiceCoachError("The recording is empty or too short.")
+        raise VoiceControllerError("The recording is empty or too short.")
 
     cached = read_json(sdir / "whisper.json")
     want_lang = cfg["general"].get("language") or None
@@ -76,14 +76,14 @@ def run_pipeline(src: Path, sdir: Path, paths: Paths, cfg: dict, n_speakers: int
         write_json(sdir / "whisper.json", tr)
     words = tr["words"]
     if not words:
-        raise VoiceCoachError("No speech was found in the recording.")
+        raise VoiceControllerError("No speech was found in the recording.")
 
     log("telling speakers apart")
     profile = S.load_profile(paths)
     try:
         dia = S.diarize(audio, words, cfg, profile, n_speakers, me_label)
     except ValueError as e:
-        raise VoiceCoachError(str(e)) from e
+        raise VoiceControllerError(str(e)) from e
     turns = build_turns(words, dia["word_speakers"])
 
     log("measuring pace, pauses, fillers and pitch")
@@ -130,17 +130,17 @@ def render_transcript(a: dict) -> str:
 def analyze(target: Path, paths: Paths, cfg: dict, *, move: bool = False, name: str | None = None,
             speakers: int | None = None, language: str | None = None, me: str | None = None) -> Path:
     """Analyze a file (copied, or moved when move=True) or re-analyze a session folder in place."""
-    from voicecoach.report import history, render_report
+    from agentic_voice_controller.report import history, render_report
 
     target = Path(target).expanduser().resolve()
     if target.is_dir():
         originals = sorted(target.glob("original.*"))
         if not originals:
-            raise VoiceCoachError(f"{target} has no original.* audio file.")
+            raise VoiceControllerError(f"{target} has no original.* audio file.")
         sdir, src = target, originals[0]
     else:
         if not target.exists():
-            raise VoiceCoachError(f"File not found: {target}")
+            raise VoiceControllerError(f"File not found: {target}")
         sdir = new_session_dir(paths, target, name)
         src = sdir / f"original{target.suffix.lower()}"
         try:

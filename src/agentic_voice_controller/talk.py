@@ -1,6 +1,6 @@
 """Conversation mode: talk out loud with the agent of a Claude Code / T3 Code thread.
 
-The agent drives the conversation (see the voice-talk skill). `vc talk start` launches a
+The agent drives the conversation (see the voice-discuss skill). `vc talk start` launches a
 background process that keeps the microphone open, cuts your speech into turns (Silero
 VAD), transcribes them (faster-whisper) and speaks the agent's replies (system voices,
 see tts.py). Each agent turn is one `vc talk turn --say -` call: speak the reply, wait
@@ -30,7 +30,7 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
-from voicecoach.config import Paths, VoiceCoachError, read_json, write_json
+from agentic_voice_controller.config import Paths, VoiceControllerError, read_json, write_json
 
 STATE_FILE = "talk.json"
 LOG_FILE = "talk.log"
@@ -46,12 +46,12 @@ DEFAULT_WAIT = 240.0  # seconds a turn waits for you to start talking
 _HALLUCINATIONS = ("amara.org", "titulky vytvořil", "johnyx", "subtitles by", "untertitel", "sous-titres")
 
 
-class TalkError(VoiceCoachError):
+class TalkError(VoiceControllerError):
     pass
 
 
 def slug(text: str) -> str:
-    from voicecoach.recorder import slug as _slug
+    from agentic_voice_controller.recorder import slug as _slug
 
     return _slug(text)
 
@@ -120,7 +120,7 @@ def request(st: dict, path: str, body: dict | None = None, timeout: float = 60.0
 def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | None = None,
           language: str | None = None, device: str | None = None,
           input_file: str | None = None, tts: str | None = None) -> dict:
-    from voicecoach.recorder import spawn_background
+    from agentic_voice_controller.recorder import spawn_background
 
     st = status(paths)
     if st.get("running"):
@@ -130,7 +130,7 @@ def start(paths: Paths, cfg: dict, *, name: str | None = None, barge_in: bool | 
     if name and slug(name):
         stem += f"_{slug(name)}"
     out_dir = paths.conversations / stem
-    args = [sys.executable, "-m", "voicecoach", "talk", "_run", "--dir", str(out_dir)]
+    args = [sys.executable, "-m", "agentic_voice_controller", "talk", "_run", "--dir", str(out_dir)]
     if barge_in is not None:
         args += ["--barge-in", "1" if barge_in else "0"]
     for flag, value in (("--language", language), ("--device", device), ("--input-file", input_file),
@@ -175,7 +175,7 @@ def stop(paths: Paths, text: str | None = None, lang: str | None = None) -> dict
 
 def speak_once(cfg: dict, text: str, lang: str) -> dict:
     """Speak without a running conversation (to try a voice)."""
-    from voicecoach.tts import Player, clean_for_speech, make_tts, resolve_output_device, split_for_speech
+    from agentic_voice_controller.tts import Player, clean_for_speech, make_tts, resolve_output_device, split_for_speech
 
     tts = make_tts(cfg)
     tts.check()
@@ -219,7 +219,7 @@ class Conversation:
                  input_file: str | None = None, tts: str | None = None):
         import numpy as np
 
-        from voicecoach.tts import Player, make_tts, resolve_output_device
+        from agentic_voice_controller.tts import Player, make_tts, resolve_output_device
 
         self.np = np
         self.paths, self.cfg, self.dir, self.name = paths, cfg, out_dir, name
@@ -278,7 +278,7 @@ class Conversation:
         print(f"{datetime.now():%H:%M:%S} {msg}", flush=True)
 
     def stt_model(self):
-        from voicecoach.transcribe import _model, whisper_device
+        from agentic_voice_controller.transcribe import _model, whisper_device
 
         name = self.c.get("stt_model") or self.cfg["transcription"]["model"]
         return _model(name, whisper_device(self.cfg), str(self.cfg["transcription"]["compute_type"]))
@@ -317,7 +317,7 @@ class Conversation:
     def _open_source(self) -> None:
         np = self.np
         if self.input_file:  # tests: play a file into the listener in real time, then silence
-            from voicecoach.audio import load_audio
+            from agentic_voice_controller.audio import load_audio
 
             audio = load_audio(Path(self.input_file))
             self.input_name = f"file {Path(self.input_file).name}"
@@ -338,7 +338,7 @@ class Conversation:
             threading.Thread(target=feed, daemon=True).start()
             return
 
-        from voicecoach.recorder import _sd, device_name, resolve_device
+        from agentic_voice_controller.recorder import _sd, device_name, resolve_device
 
         sd = _sd()
         dev = resolve_device(self.device_spec)
@@ -389,7 +389,7 @@ class Conversation:
                 continue
             try:
                 if getattr(self, "in_rate", SR) != SR:
-                    from voicecoach.tts import _resample
+                    from agentic_voice_controller.tts import _resample
 
                     x = _resample(x, self.in_rate, SR)
                 self.blocks += 1
@@ -523,7 +523,7 @@ class Conversation:
     # --- speaking ---------------------------------------------------------------------
 
     def _speak(self, text: str, lang: str | None) -> dict:
-        from voicecoach.tts import clean_for_speech, guess_language, split_for_speech
+        from agentic_voice_controller.tts import clean_for_speech, guess_language, split_for_speech
 
         chunks = split_for_speech(clean_for_speech(text))
         if not chunks:
@@ -664,7 +664,7 @@ def _make_handler(conv: Conversation):
     from http.server import BaseHTTPRequestHandler
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "voicecoach-talk"
+        server_version = "vc-talk"
 
         def log_message(self, *args) -> None:
             pass

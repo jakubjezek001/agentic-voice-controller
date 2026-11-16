@@ -1,4 +1,4 @@
-"""Command line: `vc <command>` (or `voicecoach <command>`)."""
+"""Command line: `vc <command>`."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from voicecoach import __version__
-from voicecoach.config import (
-    AUDIO_EXTENSIONS, Paths, VoiceCoachError, get_paths, go_offline_if_cached, hf_repo_cached,
+from agentic_voice_controller import __version__
+from agentic_voice_controller.config import (
+    AUDIO_EXTENSIONS, Paths, VoiceControllerError, get_paths, go_offline_if_cached, hf_repo_cached,
     load_config, setup_env, whisper_repo,
 )
 
@@ -39,7 +39,7 @@ def cmd_doctor(args, paths: Paths, cfg: dict) -> int:
         ok &= good
         print(f"  [{'ok' if good else '!!'}] {label}{': ' + detail if detail else ''}")
 
-    print(f"voicecoach {__version__} on {platform.system()} {platform.machine()}, Python {platform.python_version()}")
+    print(f"agentic-voice-controller {__version__} on {platform.system()} {platform.machine()}, Python {platform.python_version()}")
     print(f"data: {paths.root}")
     print("\nPackages")
     for mod in ("numpy", "torch", "transformers", "faster_whisper", "ctranslate2", "av", "parselmouth", "sklearn"):
@@ -51,7 +51,7 @@ def cmd_doctor(args, paths: Paths, cfg: dict) -> int:
 
     print("\nMicrophone")
     try:
-        from voicecoach.recorder import list_input_devices
+        from agentic_voice_controller.recorder import list_input_devices
 
         devs = list_input_devices()
         default = next((d["name"] for d in devs if d["default"]), "none")
@@ -61,7 +61,7 @@ def cmd_doctor(args, paths: Paths, cfg: dict) -> int:
 
     print("\nConversation mode (speech output)")
     try:
-        from voicecoach.tts import make_tts, pick_voice
+        from agentic_voice_controller.tts import make_tts, pick_voice
 
         make_tts(cfg).check()
         configured = cfg["conversation"].get("voices") or {}
@@ -86,7 +86,7 @@ def cmd_doctor(args, paths: Paths, cfg: dict) -> int:
 
 
 def cmd_devices(args, paths, cfg) -> int:
-    from voicecoach.recorder import list_input_devices
+    from agentic_voice_controller.recorder import list_input_devices
 
     devs = list_input_devices()
     if args.json:
@@ -99,18 +99,18 @@ def cmd_devices(args, paths, cfg) -> int:
 
 
 def cmd_models_download(args, paths, cfg) -> int:
-    from voicecoach.config import log, torch_device
+    from agentic_voice_controller.config import log, torch_device
 
     log(f"whisper '{cfg['transcription']['model']}'")
     from faster_whisper.utils import download_model
 
     download_model(cfg["transcription"]["model"])
     log(f"speaker model {cfg['speakers']['model']}")
-    from voicecoach import speakers
+    from agentic_voice_controller import speakers
 
     speakers._load(cfg["speakers"]["model"], torch_device(cfg))
     log(f"emotion model {cfg['emotion']['model']}")
-    from voicecoach import emotion
+    from agentic_voice_controller import emotion
 
     emotion.get_model(cfg)
     log(f"models are in {paths.cache}")
@@ -118,7 +118,7 @@ def cmd_models_download(args, paths, cfg) -> int:
 
 
 def cmd_record_start(args, paths, cfg) -> int:
-    from voicecoach import recorder
+    from agentic_voice_controller import recorder
 
     st = recorder.start(paths, cfg, name=args.name, device=args.device, max_minutes=args.max_minutes)
     if args.json:
@@ -130,7 +130,7 @@ def cmd_record_start(args, paths, cfg) -> int:
 
 
 def cmd_record_stop(args, paths, cfg) -> int:
-    from voicecoach import recorder
+    from agentic_voice_controller import recorder
 
     last = recorder.stop(paths)
     f = Path(last["file"])
@@ -141,7 +141,7 @@ def cmd_record_stop(args, paths, cfg) -> int:
         out["file"] = str(dest)
         out["note"] = "moved to the inbox for the watcher"
     elif args.analyze:
-        from voicecoach.pipeline import analyze
+        from agentic_voice_controller.pipeline import analyze
 
         out["session"] = str(analyze(f, paths, cfg, move=True))
     if args.json:
@@ -154,7 +154,7 @@ def cmd_record_stop(args, paths, cfg) -> int:
 
 
 def cmd_record_status(args, paths, cfg) -> int:
-    from voicecoach import recorder
+    from agentic_voice_controller import recorder
 
     st = recorder.status(paths)
     if args.json:
@@ -174,7 +174,7 @@ def cmd_record_status(args, paths, cfg) -> int:
 
 
 def cmd_record_run(args, paths, cfg) -> int:
-    from voicecoach.recorder import run_background
+    from agentic_voice_controller.recorder import run_background
 
     run_background(paths, cfg, Path(args.out), args.device, args.max_minutes)
     return 0
@@ -190,7 +190,7 @@ def _text_arg(value: str | None) -> str | None:
 
 
 def cmd_talk_start(args, paths, cfg) -> int:
-    from voicecoach import talk
+    from agentic_voice_controller import talk
 
     st = talk.start(paths, cfg, name=args.name, barge_in=args.barge_in, language=args.language,
                     device=args.device, input_file=args.input_file, tts=args.tts)
@@ -225,7 +225,7 @@ def _print_turn(res: dict) -> None:
 
 
 def cmd_talk_turn(args, paths, cfg) -> int:
-    from voicecoach import talk
+    from agentic_voice_controller import talk
 
     res = talk.turn(paths, _text_arg(args.say), args.lang, args.wait)
     if args.json:
@@ -236,7 +236,7 @@ def cmd_talk_turn(args, paths, cfg) -> int:
 
 
 def cmd_talk_say(args, paths, cfg) -> int:
-    from voicecoach import talk
+    from agentic_voice_controller import talk
 
     text = _text_arg(args.text) or ""
     if talk.status(paths).get("running"):
@@ -253,15 +253,15 @@ def cmd_talk_say(args, paths, cfg) -> int:
 
 
 def cmd_talk_stop(args, paths, cfg) -> int:
-    from voicecoach import talk
+    from agentic_voice_controller import talk
 
     res = talk.stop(paths, _text_arg(args.say), args.lang)
     if args.analyze and res.get("audio") and Path(res["audio"]).exists():
-        from voicecoach.pipeline import analyze
+        from agentic_voice_controller.pipeline import analyze
 
         from collections import Counter
 
-        from voicecoach.config import read_json
+        from agentic_voice_controller.config import read_json
 
         name = "talk-" + Path(res["dir"]).name.split("_", 2)[-1] if "_" in Path(res["dir"]).name else "talk"
         conv = read_json(Path(res["dir"]) / "conversation.json") or {}
@@ -283,7 +283,7 @@ def cmd_talk_stop(args, paths, cfg) -> int:
 
 
 def cmd_talk_status(args, paths, cfg) -> int:
-    from voicecoach import talk
+    from agentic_voice_controller import talk
 
     st = talk.status(paths)
     st.pop("token", None)
@@ -301,7 +301,7 @@ def cmd_talk_status(args, paths, cfg) -> int:
 
 
 def cmd_talk_voices(args, paths, cfg) -> int:
-    from voicecoach.tts import is_novelty, list_voices, pick_voice
+    from agentic_voice_controller.tts import is_novelty, list_voices, pick_voice
 
     voices = list_voices()
     configured = cfg["conversation"].get("voices") or {}
@@ -324,7 +324,7 @@ def cmd_talk_voices(args, paths, cfg) -> int:
 
 
 def cmd_talk_run(args, paths, cfg) -> int:
-    from voicecoach.talk import run_daemon
+    from agentic_voice_controller.talk import run_daemon
 
     barge = None if args.barge_in is None else args.barge_in == "1"
     run_daemon(paths, cfg, Path(args.dir), name=args.name, barge_in=barge, language=args.language,
@@ -336,7 +336,7 @@ def cmd_import(args, paths, cfg) -> int:
     for f in args.files:
         f = Path(f).expanduser()
         if not f.is_file() or f.suffix.lower() not in AUDIO_EXTENSIONS:
-            raise VoiceCoachError(f"Not an audio file: {f}")
+            raise VoiceControllerError(f"Not an audio file: {f}")
         name = f.name if not args.name else f"{args.name}{f.suffix.lower()}"
         dest = paths.inbox / name
         shutil.copy2(f, dest)
@@ -348,12 +348,12 @@ def _latest_recording(paths: Paths) -> Path:
     files = sorted((f for f in paths.recordings.iterdir() if f.suffix.lower() in AUDIO_EXTENSIONS),
                    key=lambda f: f.stat().st_mtime)
     if not files:
-        raise VoiceCoachError("No recordings in data/recordings/.")
+        raise VoiceControllerError("No recordings in data/recordings/.")
     return files[-1]
 
 
 def cmd_analyze(args, paths, cfg) -> int:
-    from voicecoach.pipeline import analyze
+    from agentic_voice_controller.pipeline import analyze
 
     targets: list[tuple[Path, bool]] = [(Path(t), False) for t in args.targets]
     if args.latest:
@@ -362,7 +362,7 @@ def cmd_analyze(args, paths, cfg) -> int:
         targets += [(f, True) for f in sorted(paths.inbox.iterdir())
                     if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS]
     if not targets:
-        raise VoiceCoachError("Nothing to analyze: give a file or session folder, --latest, or --inbox.")
+        raise VoiceControllerError("Nothing to analyze: give a file or session folder, --latest, or --inbox.")
     results = []
     for t, inside_data in targets:
         move = inside_data or _is_within(t, paths.recordings) or _is_within(t, paths.inbox)
@@ -387,7 +387,7 @@ def _is_within(p: Path, parent: Path) -> bool:
 
 
 def cmd_sessions(args, paths, cfg) -> int:
-    from voicecoach.pipeline import list_sessions
+    from agentic_voice_controller.pipeline import list_sessions
 
     rows = list_sessions(paths)[: args.limit]
     if args.json:
@@ -404,7 +404,7 @@ def cmd_sessions(args, paths, cfg) -> int:
 
 
 def cmd_watch(args, paths, cfg) -> int:
-    from voicecoach.watch import watch
+    from agentic_voice_controller.watch import watch
 
     n = watch(paths, cfg, interval=args.interval, once=args.once)
     if args.once:
@@ -413,7 +413,7 @@ def cmd_watch(args, paths, cfg) -> int:
 
 
 def cmd_bank_status(args, paths, cfg) -> int:
-    from voicecoach import bank
+    from agentic_voice_controller import bank
 
     st = bank.status(paths)
     if args.json:
@@ -434,7 +434,7 @@ def cmd_bank_status(args, paths, cfg) -> int:
 
 
 def cmd_bank_add(args, paths, cfg) -> int:
-    from voicecoach import bank
+    from agentic_voice_controller import bank
 
     for f in bank.add(paths, args.label, [Path(f) for f in args.files]):
         print(f)
@@ -442,7 +442,7 @@ def cmd_bank_add(args, paths, cfg) -> int:
 
 
 def cmd_bank_record(args, paths, cfg) -> int:
-    from voicecoach import bank
+    from agentic_voice_controller import bank
 
     r = bank.record(paths, cfg, args.label, args.seconds, args.device)
     print(f"saved {r['file']}")
@@ -450,7 +450,7 @@ def cmd_bank_record(args, paths, cfg) -> int:
 
 
 def cmd_bank_train(args, paths, cfg) -> int:
-    from voicecoach import bank
+    from agentic_voice_controller import bank
 
     r = bank.train(paths, cfg)
     if args.json:
@@ -475,7 +475,7 @@ def cmd_bank_train(args, paths, cfg) -> int:
 # --- parser --------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="vc", description="Voice Coach: record, transcribe and analyze how you speak.")
+    p = argparse.ArgumentParser(prog="vc", description="Agentic Voice Controller: control agents by voice; record, transcribe and analyze how you speak.")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -513,7 +513,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-minutes", type=float, default=180)
     s.set_defaults(func=cmd_record_run)
 
-    t = sub.add_parser("talk", help="conversation mode: talk out loud with the agent (voice-talk skill)")
+    t = sub.add_parser("talk", help="conversation mode: talk out loud with the agent (voice-discuss skill)")
     ts = t.add_subparsers(dest="talk_cmd", required=True)
     s = ts.add_parser("start", help="open the microphone and wait for turns")
     s.add_argument("--name", help="topic, used for the folder name")
@@ -621,7 +621,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.func is not cmd_models_download:
             go_offline_if_cached(paths, cfg)
         return args.func(args, paths, cfg) or 0
-    except VoiceCoachError as e:
+    except VoiceControllerError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:

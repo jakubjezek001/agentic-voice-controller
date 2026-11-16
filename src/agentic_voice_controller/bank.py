@@ -19,8 +19,8 @@ from pathlib import Path
 
 import numpy as np
 
-from voicecoach import audio as A
-from voicecoach.config import AUDIO_EXTENSIONS, Paths, VoiceCoachError, log, read_json, write_json
+from agentic_voice_controller import audio as A
+from agentic_voice_controller.config import AUDIO_EXTENSIONS, Paths, VoiceControllerError, log, read_json, write_json
 
 LABEL_RE = re.compile(r"^_?[a-z0-9][a-z0-9_-]*$")
 METRICS_FILE = "bank_metrics.json"
@@ -29,7 +29,7 @@ METRICS_FILE = "bank_metrics.json"
 def check_label(label: str) -> str:
     label = label.strip().lower()
     if not LABEL_RE.match(label):
-        raise VoiceCoachError(f"Label {label!r}: use lowercase letters, digits, - or _ (e.g. calm, stressed).")
+        raise VoiceControllerError(f"Label {label!r}: use lowercase letters, digits, - or _ (e.g. calm, stressed).")
     return label
 
 
@@ -74,9 +74,9 @@ def add(paths: Paths, label: str, files: list[Path]) -> list[Path]:
     for f in files:
         f = Path(f).expanduser()
         if not f.is_file():
-            raise VoiceCoachError(f"File not found: {f}")
+            raise VoiceControllerError(f"File not found: {f}")
         if f.suffix.lower() not in AUDIO_EXTENSIONS:
-            raise VoiceCoachError(f"Not an audio file this tool knows: {f.name}")
+            raise VoiceControllerError(f"Not an audio file this tool knows: {f.name}")
         dest = _unique(dest_dir / f.name)
         shutil.copy2(f, dest)
         out.append(dest)
@@ -84,7 +84,7 @@ def add(paths: Paths, label: str, files: list[Path]) -> list[Path]:
 
 
 def record(paths: Paths, cfg: dict, label: str, seconds: float, device: str | None = None) -> dict:
-    from voicecoach.recorder import record_to_wav, resolve_device
+    from agentic_voice_controller.recorder import record_to_wav, resolve_device
 
     label = check_label(label)
     dest = _unique(paths.voicebank / label / f"{datetime.now():%Y-%m-%d_%H%M%S}.wav")
@@ -113,14 +113,14 @@ def train(paths: Paths, cfg: dict) -> dict:
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
 
-    from voicecoach import emotion as E
-    from voicecoach import prosody as P
-    from voicecoach import speakers as S
+    from agentic_voice_controller import emotion as E
+    from agentic_voice_controller import prosody as P
+    from agentic_voice_controller import speakers as S
 
     files = clip_files(paths)
     all_clips = [(label, f) for label, fs in files.items() for f in fs]
     if not all_clips:
-        raise VoiceCoachError(f"The voice bank is empty. Add clips to {paths.voicebank}/<label>/ first.")
+        raise VoiceControllerError(f"The voice bank is empty. Add clips to {paths.voicebank}/<label>/ first.")
 
     ec = cfg["emotion"]
     seg_s = float(ec["segment_seconds"])
@@ -152,7 +152,7 @@ def train(paths: Paths, cfg: dict) -> dict:
     log("building your voice profile")
     embs = S.embed(speaker_segments, cfg)
     if len(embs) == 0:
-        raise VoiceCoachError("The clips contain no usable speech.")
+        raise VoiceControllerError("The clips contain no usable speech.")
     profile = embs.mean(0)
     profile /= np.linalg.norm(profile) + 1e-9
     sims = embs @ profile

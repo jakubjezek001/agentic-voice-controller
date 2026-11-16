@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from voicecoach.audio import fmt_time
-from voicecoach.config import Paths, read_json
+from agentic_voice_controller.audio import fmt_time
+from agentic_voice_controller.config import Paths, read_json
 
 # (summary key, label, format, note)
 METRICS = [
