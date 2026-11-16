@@ -63,7 +63,8 @@ Everything lives in `./data` (ignored by git, mounted into Docker as `/data`):
 
 ```
 data/
-  config.toml          settings (language, models, speakers, mic, filler words)
+  config.toml          your settings, copied from config.example.toml on first run
+  config.example.toml  every setting with its default and a comment (tracked in git)
   inbox/               drop recordings here; `vc watch` / Docker analyze them
   recordings/          microphone recordings from `vc record`
   sessions/<id>/       one folder per analyzed recording:
@@ -194,7 +195,11 @@ because Docker runs the models in a Linux VM on CPU only.
 
 ## Settings
 
-`data/config.toml` is created on first run. Useful keys:
+`data/config.toml` is yours and stays out of git. It is created on first run as a copy of
+[`data/config.example.toml`](data/config.example.toml), the one file in `data/` tracked by git besides
+`data/README.md`. It is the example that lists every key with its default and a comment. Keys you leave
+out fall back to those defaults, so after an update compare your file with the example to
+see new keys. Useful keys:
 
 - `general.device`: `auto` (NVIDIA GPU, else Apple GPU, else CPU) or force `cpu`
 - `general.language`: `""` auto, or `"en"`, `"cs"`, ...

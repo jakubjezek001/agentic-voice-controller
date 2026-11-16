@@ -6,6 +6,7 @@ __pycache__/
 # Private data: recordings, transcripts, voice bank, models
 data/*
 !data/README.md
+!data/config.example.toml
 
 # Secrets
 .env
