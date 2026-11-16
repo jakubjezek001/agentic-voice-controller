@@ -1,6 +1,6 @@
 ---
 name: voice-bank
-description: Build and train the user's voice bank in Voice Coach, which holds labelled clips of their own voice used to recognize them in calls and to train their personal emotion model. Use for /voice-bank [status | record <label> | add <label> <files> | train], "add a clip", "I'm stressed now, record me", "train my voice model", "how good is my emotion model".
+description: Build and train the user's voice bank in Agentic Voice Controller, which holds labelled clips of their own voice used to recognize them in calls and to train their personal emotion model. Use for /voice-bank [status | record <label> | add <label> <files> | train], "add a clip", "I'm stressed now, record me", "train my voice model", "how good is my emotion model".
 ---
 
 # Voice bank

@@ -5,18 +5,18 @@
 #   docker compose logs -f            follow
 #   docker compose run --rm worker vc bank train
 #   docker compose down               stop
-name: voice-coach
+name: agentic-voice-controller
 
 services:
   worker:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: voice-coach:latest
-    command: ["voicecoach", "watch", "--interval", "10"]
+    image: agentic-voice-controller:latest
+    command: ["vc", "watch", "--interval", "10"]
     volumes:
       - ./data:/data
     environment:
-      VOICECOACH_DATA: /data
+      VC_DATA: /data
       HF_HOME: /data/cache/hf
     restart: unless-stopped

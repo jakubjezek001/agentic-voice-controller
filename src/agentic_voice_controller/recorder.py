@@ -23,7 +23,7 @@ from typing import Callable
 
 import numpy as np
 
-from voicecoach.config import Paths, VoiceCoachError, read_json, write_json
+from agentic_voice_controller.config import Paths, VoiceControllerError, read_json, write_json
 
 STATE_FILE = "recorder.json"
 STOP_FILE = "recorder.stop"
@@ -32,7 +32,7 @@ LOG_FILE = "recorder.log"
 HEARTBEAT_TIMEOUT = 6.0
 
 
-class RecorderError(VoiceCoachError):
+class RecorderError(VoiceControllerError):
     pass
 
 
@@ -174,7 +174,7 @@ def record_to_wav(
 
 def spawn_background(paths: Paths, args: list[str], log_file: Path) -> subprocess.Popen:
     """Start a process that outlives this one (and the shell or agent that ran it)."""
-    env = dict(os.environ, VOICECOACH_DATA=str(paths.root))
+    env = dict(os.environ, VC_DATA=str(paths.root))
     with open(log_file, "ab") as logf:
         kwargs = dict(stdin=subprocess.DEVNULL, stdout=logf, stderr=subprocess.STDOUT, env=env, close_fds=True)
         if os.name == "nt":
@@ -218,7 +218,7 @@ def start(paths: Paths, cfg: dict, name: str | None = None, device: str | None =
         stem += f"_{slug(name)}"
     out = paths.recordings / f"{stem}.wav"
     args = [
-        sys.executable, "-m", "voicecoach", "record", "_run",
+        sys.executable, "-m", "agentic_voice_controller", "record", "_run",
         "--out", str(out),
         "--max-minutes", str(max_minutes or cfg["recording"]["max_minutes"]),
     ]

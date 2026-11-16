@@ -1,6 +1,6 @@
 ---
 name: voice-setup
-description: Set up Voice Coach on this machine (macOS, Linux or Windows), with or without Docker, and check that it works. Use for /voice-setup, "set this up", "install voice coach", "why doesn't recording work", or the first time someone opens this project.
+description: Set up Agentic Voice Controller on this machine (macOS, Linux or Windows), with or without Docker, and check that it works. Use for /voice-setup, "set this up", "install agentic voice controller", "why doesn't recording work", or the first time someone opens this project.
 ---
 
 # Voice setup
@@ -58,5 +58,5 @@ recording stays native. On a Mac the native path is faster.
 ## 6. Next steps
 
 Point to the `voice-bank` skill (teach it your voice), `/voice-record start`,
-`/voice-analyze`, and `/voice-talk` (brainstorm out loud with the agent). Remind the user that the other person on a call may need to consent to
+`/voice-analyze`, and `/voice-discuss` (talk to the agent out loud). Remind the user that the other person on a call may need to consent to
 the recording.

@@ -1,6 +1,6 @@
 ---
 name: voice-analyze
-description: Analyze a call recording with Voice Coach and write coaching feedback on how the user spoke (pace, pauses, fillers, talk balance, pitch, emotion), compared with earlier calls. Use for /voice-analyze [file | session | latest | inbox], "analyze my last call", "how did I sound", "give me feedback on this recording".
+description: Analyze a call recording with Agentic Voice Controller and write coaching feedback on how the user spoke (pace, pauses, fillers, talk balance, pitch, emotion), compared with earlier calls. Use for /voice-analyze [file | session | latest | inbox], "analyze my last call", "how did I sound", "give me feedback on this recording".
 ---
 
 # Voice analyze
@@ -39,6 +39,14 @@ Read `transcript.md` in the session folder.
 - The `coaching.md` of the 2-3 previous sessions (`./vc sessions`), to say whether the
   advice from last time was followed.
 
+Token economy (`docs/agents.md`): read it yourself when the transcript has fewer than about 600 lines
+and there are 3 or fewer earlier sessions. Above that, delegate the reading, never the judgment:
+- `scribe` (Haiku) copies the metrics and quotes the transcript lines at the timestamps you name.
+- `local-analyst` (Sonnet, no web) lists each piece of earlier advice with the matching metric or quote
+  from this session. Give it this session's `report.md`. You decide whether the advice was followed.
+
+Both write into `data/notes/`. You write `coaching.md` yourself.
+
 ## 4. Write `coaching.md` in the session folder
 
 Write it in the user's language (the language of the call unless they prefer otherwise).
@@ -73,6 +81,10 @@ Rules:
   and listening). Judge them against the purpose of the call when it is clear.
 - Emotion scores describe the sound of a voice, not feelings. Never diagnose; describe.
 - Do not comment on the other person's character. Their talk share and emotion are context only.
+
+Before you reply, run a `goldfish` review of `coaching.md` against the session files. It checks every
+number, timestamp and quote. Fix every mismatch in a number, timestamp or quote, whatever severity it
+is given, along with anything marked `blocking`. Check each finding before you act on it.
 
 ## 5. Reply
 

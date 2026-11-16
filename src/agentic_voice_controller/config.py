@@ -18,7 +18,7 @@ AUDIO_EXTENSIONS = {
 }
 
 DEFAULT_CONFIG_TOML = """\
-# Voice Coach settings. Edit freely: missing keys fall back to built-in defaults.
+# Agentic Voice Controller settings. Edit freely: missing keys fall back to built-in defaults.
 
 [general]
 # Language of your calls: "" = auto-detect, or a code like "en", "cs", "de".
@@ -66,7 +66,7 @@ channels = 1
 max_minutes = 180
 
 [conversation]
-# Conversation mode (`vc talk`, the voice-talk skill): talk out loud with the agent.
+# Conversation mode (`vc talk`, the voice-discuss skill): talk out loud with the agent.
 # Speech recognition model for your side; "" = the [transcription] model.
 stt_model = ""
 beam_size = 3
@@ -116,7 +116,7 @@ cs = ["ehm", "hm", "eee", "jako", "prostě", "vlastně", "takže", "tak nějak",
 """
 
 
-class VoiceCoachError(Exception):
+class VoiceControllerError(Exception):
     """An error with a message meant for the user."""
 
 
@@ -177,7 +177,7 @@ def project_root() -> Path | None:
 
 
 def get_paths() -> Paths:
-    env = os.environ.get("VOICECOACH_DATA")
+    env = os.environ.get("VC_DATA")
     if env:
         root = Path(env).expanduser()
     else:
@@ -259,7 +259,7 @@ def load_config(paths: Paths) -> dict[str, Any]:
         try:
             user = tomllib.loads(paths.config_file.read_text(encoding="utf-8"))
         except tomllib.TOMLDecodeError as e:
-            raise VoiceCoachError(f"{paths.config_file} is not valid TOML: {e}") from e
+            raise VoiceControllerError(f"{paths.config_file} is not valid TOML: {e}") from e
         _deep_merge(cfg, user)
     return cfg
 

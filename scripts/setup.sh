@@ -17,10 +17,10 @@ fi
 
 chmod +x "$ROOT/vc" 2>/dev/null || true
 uv sync
-uv run voicecoach init
+uv run vc init
 if [ "${1:-}" != "--no-models" ]; then
-  uv run voicecoach models download
+  uv run vc models download
 fi
-uv run voicecoach doctor || true
+uv run vc doctor || true
 echo
 echo "Done. Try: ./vc record start --name test   then   ./vc record stop --analyze"

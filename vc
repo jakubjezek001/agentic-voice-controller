@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
-# Voice Coach command wrapper for macOS / Linux / Git Bash. Usage: ./vc <command> (./vc --help)
+# Agentic Voice Controller command wrapper for macOS / Linux / Git Bash. Usage: ./vc <command> (./vc --help)
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-exec uv run --quiet --project "$ROOT" voicecoach "$@"
+exec uv run --quiet --project "$ROOT" vc "$@"

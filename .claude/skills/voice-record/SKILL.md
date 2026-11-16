@@ -1,6 +1,6 @@
 ---
 name: voice-record
-description: Start, stop or check the background microphone recording of a call or practice session in Voice Coach. Use for /voice-record start [name] | stop | status, "start recording", "stop recording", "am I recording?".
+description: Start, stop or check the background microphone recording of a call or practice session in Agentic Voice Controller. Use for /voice-record start [name] | stop | status, "start recording", "stop recording", "am I recording?".
 ---
 
 # Voice record

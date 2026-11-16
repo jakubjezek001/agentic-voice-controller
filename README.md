@@ -1,8 +1,11 @@
-# Voice Coach
+# Agentic Voice Controller
 
-Record your calls (or drop in recordings from your phone), and get a local, private
-analysis of how you speak: who talked how much, your pace, pauses, filler words,
-pitch variation, response timing and an emotion timeline. Claude Code then turns the
+Control your agents with your voice. You talk, a local speech model writes down what
+you said, and the agent (Claude Code, T3 Code, ...) answers out loud.
+
+The same pieces do more: record your calls (or drop in recordings from your phone) and get
+a local, private analysis of how you speak: who talked how much, your pace, pauses, filler
+words, pitch variation, response timing and an emotion timeline. Claude Code then turns the
 numbers into coaching (`coaching.md`) and tracks whether you are improving.
 
 Everything runs on your machine. Audio never leaves it. The only network use is
@@ -29,11 +32,12 @@ vc.cmd record stop --analyze
 Or open Claude Code in this folder and say "set this up" (the `voice-setup` skill), then
 use `/voice-record start`, `/voice-record stop` and `/voice-analyze`.
 
-To brainstorm out loud with the agent, open a thread (Claude Code, T3 Code, ...) in this
-folder and say `/voice-talk pricing ideas`. See [Conversation mode](#conversation-mode).
+To talk to the agent out loud, open a thread (Claude Code, T3 Code, ...) in this
+folder and say `/voice-discuss pricing ideas`. See [Conversation mode](#conversation-mode).
 
-To move it to another machine, copy the folder without `.venv/` and `data/` (or push it to
-a private git repo), then run the setup script there. Copy `data/voicebank/` and
+To move it to another machine, copy the folder without `.venv/` and `data/` (or clone the
+git repo: `data/` is git-ignored, so recordings and the voice bank never get pushed), then
+run the setup script there. Copy `data/voicebank/` and
 `data/models/` along if you want to keep your trained voice.
 
 Speed: on an Apple Silicon Mac, a 10-minute call takes about 1.5 minutes (the Apple
@@ -51,7 +55,7 @@ minutes of audio. A larger Whisper model is slower.
 | Pitch and loudness | Praat (parselmouth) | |
 | Emotion | wav2vec2 emotion model + your personal classifier | personal one needs a voice bank |
 | Coaching text | Claude Code (`voice-analyze` skill) | reads the report, writes `coaching.md` |
-| Conversation mode | Silero VAD + faster-whisper + system voices | the agent hears you and talks back (`voice-talk` skill) |
+| Conversation mode | Silero VAD + faster-whisper + system voices | the agent hears you and talks back (`voice-discuss` skill) |
 
 ## The data folder
 
@@ -85,7 +89,7 @@ vc analyze <file>|--latest|--inbox [--speakers N] [--language cs] [--me SPEAKER_
 vc analyze data/sessions/<id> --me SPEAKER_1   re-run a session (reuses the transcript)
 vc sessions                    list sessions
 vc watch                       analyze whatever lands in data/inbox (the service)
-vc talk start|turn|say|stop|status|voices   conversation mode (driven by the voice-talk skill)
+vc talk start|turn|say|stop|status|voices   conversation mode (driven by the voice-discuss skill)
 vc bank status|add|record|train  build your voice bank and personal models
 ```
 
@@ -109,7 +113,7 @@ profile alone.
 ## Conversation mode
 
 Talk to the agent of a Claude Code / T3 Code thread, and it talks back. This is good for
-brainstorming, thinking a problem through, or rehearsing a call. Say `/voice-talk <topic>`
+brainstorming, thinking a problem through, or rehearsing a call. Say `/voice-discuss <topic>`
 in a thread opened in this folder.
 
 ```
@@ -198,3 +202,7 @@ Conversation mode keeps its state in a small background process instead, so a pl
 command per turn is enough there too.
 An MCP server would only be needed to drive this from Claude Desktop, and it would add a
 process to keep running. The CLI's `--json` output makes one easy to add later.
+
+## License
+
+[MIT](LICENSE). Models downloaded at setup (faster-whisper, WavLM and others) have their own licenses.

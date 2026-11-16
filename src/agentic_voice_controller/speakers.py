@@ -12,8 +12,8 @@ from functools import lru_cache
 
 import numpy as np
 
-from voicecoach import audio as A
-from voicecoach.config import Paths, torch_device
+from agentic_voice_controller import audio as A
+from agentic_voice_controller.config import Paths, torch_device
 
 PROFILE_FILE = "voice_profile.npz"
 

@@ -30,7 +30,7 @@ from typing import Callable
 
 import numpy as np
 
-from voicecoach.config import VoiceCoachError, load_dotenv
+from agentic_voice_controller.config import VoiceControllerError, load_dotenv
 
 TTS_RATE = 22050
 _NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW: no console flashes on Windows
@@ -50,7 +50,7 @@ _PREFERRED = [
 _EN_LOCALES = ["en_US", "en_GB", "en_AU", "en_IE", "en_CA", "en_ZA", "en_IN"]
 
 
-class TTSError(VoiceCoachError):
+class TTSError(VoiceControllerError):
     pass
 
 
