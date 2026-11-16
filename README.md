@@ -89,7 +89,7 @@ vc analyze <file>|--latest|--inbox [--speakers N] [--language cs] [--me SPEAKER_
 vc analyze data/sessions/<id> --me SPEAKER_1   re-run a session (reuses the transcript)
 vc sessions                    list sessions
 vc watch                       analyze whatever lands in data/inbox (the service)
-vc talk start|turn|say|stop|status|voices   conversation mode (driven by the voice-discuss skill)
+vc discuss start|turn|say|stop|status|voices   conversation mode (driven by the voice-discuss skill)
 vc bank status|add|record|train  build your voice bank and personal models
 ```
 
@@ -119,25 +119,25 @@ in a thread opened in this folder.
 ```
 you speak ──> mic ──> VAD: your turn ends after 1.4 s of silence ──> Whisper ──> text
                                                                                 │
-agent's voice <── speakers <── system voice <── `vc talk turn --say` <── the agent
+agent's voice <── speakers <── system voice <── `vc discuss turn --say` <── the agent
 ```
 
-- `vc talk start` launches a background listener. It keeps the microphone open, so
+- `vc discuss start` launches a background listener. It keeps the microphone open, so
   anything you say while the agent is still thinking is kept for the next turn. If you
   keep talking, the agent's stale reply is dropped and it answers everything you said.
-- The agent runs one `vc talk turn --say -` per turn: speak the reply, wait for your next
+- The agent runs one `vc discuss turn --say -` per turn: speak the reply, wait for your next
   turn, read it. Its replies are short and spoken-style, in your language (Czech and
   English switch automatically).
-- `vc talk stop` ends it. The agent then writes `notes.md` (ideas, decisions, open
+- `vc discuss stop` ends it. The agent then writes `notes.md` (ideas, decisions, open
   questions, next steps) next to the transcript in `data/conversations/<id>/`.
   Conversations are kept as text: every turn is transcribed as you speak, and no audio is
-  saved. To get a voice report on how you spoke, start with `vc talk start --keep-audio`
-  (or set `conversation.keep_audio = true`) and end with `vc talk stop --analyze`.
+  saved. To get a voice report on how you spoke, start with `vc discuss start --keep-audio`
+  (or set `conversation.keep_audio = true`) and end with `vc discuss stop --analyze`.
 - With headphones, `--barge-in` (or `barge_in = true`) lets you interrupt the agent by
   talking over it. With speakers, leave it off: the microphone is muted while the agent
   talks, so it doesn't hear itself.
 - The listener stops by itself 5 minutes after the agent's last turn request.
-- Voices: `vc talk voices`. The defaults are the OS voices, and quality varies. On macOS,
+- Voices: `vc discuss voices`. The defaults are the OS voices, and quality varies. On macOS,
   download a "Premium" or "Enhanced" voice (System Settings > Accessibility > Spoken
   Content > System Voice > Manage Voices) and set it in `[conversation.voices]`.
   Windows uses the installed SAPI voices. Linux needs `espeak-ng`.

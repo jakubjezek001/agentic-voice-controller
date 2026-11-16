@@ -72,7 +72,7 @@ channels = 1
 max_minutes = 180
 
 [conversation]
-# Conversation mode (`vc talk`, the voice-discuss skill): talk out loud with the agent.
+# Conversation mode (`vc discuss`, the voice-discuss skill): talk out loud with the agent.
 # Speech recognition model for your side; "" = the [transcription] model.
 stt_model = ""
 beam_size = 3
@@ -104,12 +104,12 @@ output_device = ""
 idle_minutes = 5
 max_minutes = 180
 # Conversations are kept as text only (transcript.md): each turn is transcribed as you speak.
-# true = also save your side as mic.wav, needed for the voice analysis of `vc talk stop --analyze`.
-# `vc talk start --keep-audio` turns it on for one conversation.
+# true = also save your side as mic.wav, needed for the voice analysis of `vc discuss stop --analyze`.
+# `vc discuss start --keep-audio` turns it on for one conversation.
 keep_audio = false
 
 [conversation.voices]
-# Voice per language, a name from `vc talk voices`. Missing = best installed voice.
+# Voice per language, a name from `vc discuss voices`. Missing = best installed voice.
 # en = "Ava (Premium)"
 # cs = "Zuzana (Premium)"
 
