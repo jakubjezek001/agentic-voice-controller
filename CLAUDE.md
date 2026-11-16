@@ -48,7 +48,8 @@ text, and it hands work down to the cheapest tier that loses no quality. Playboo
   `bank.py` (voice bank, training), `report.py` (report.md), `recorder.py`, `watch.py`, `config.py`,
   `discuss.py` (conversation mode: background listener with VAD + STT, local HTTP control),
   `tts.py` (system voices: macOS `say`, Windows SAPI, Linux espeak-ng; playback).
-- `data/` (git-ignored): settings, recordings, sessions, conversations, voice bank, models, model cache.
+- `data/` (git-ignored, except `README.md` and `config.example.toml`, the defaults of every setting):
+  settings, recordings, sessions, conversations, voice bank, models, model cache.
   `VC_DATA` overrides its location (Docker uses `/data`).
 
 ## Rules

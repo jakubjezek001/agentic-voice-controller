@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import functools
 import json
 import os
 import sys
@@ -17,111 +18,7 @@ AUDIO_EXTENSIONS = {
     ".webm", ".mp4", ".amr", ".3gp", ".caf", ".aiff", ".aif", ".wma",
 }
 
-DEFAULT_CONFIG_TOML = """\
-# Agentic Voice Controller settings. Edit freely: missing keys fall back to built-in defaults.
-
-[general]
-# Language of your calls: "" = auto-detect, or a code like "en", "cs", "de".
-language = ""
-# How many people usually talk in a recording (1 = solo practice).
-speakers = 2
-# "auto" = NVIDIA GPU (cuda) if present, else Apple GPU (mps), else CPU.
-# Force "cpu" if a GPU causes trouble.
-device = "auto"
-
-[transcription]
-# faster-whisper model: tiny, base, small, medium, large-v3, large-v3-turbo.
-# Bigger is more accurate and slower. "small" is a good start on a laptop.
-model = "small"
-# "auto" = int8 on CPU, float16 on a GPU.
-compute_type = "auto"
-beam_size = 5
-# Ask Whisper to keep "um"/"uh" (it drops them by default). Used only when language = "en".
-keep_fillers = true
-
-[speakers]
-model = "microsoft/wavlm-base-plus-sv"
-window_seconds = 2.0
-hop_seconds = 1.0
-# Two speaker clusters this similar are treated as one person.
-merge_similarity = 0.92
-
-[emotion]
-# Generic speech-emotion model (labels: neutral, happy, angry, sad).
-model = "superb/wav2vec2-base-superb-er"
-# Speech is scored in chunks of about this many seconds.
-segment_seconds = 6.0
-# Also score the other speakers with the generic model (your personal model only knows you).
-analyze_others = true
-# Hidden layers whose averaged output feeds your personal emotion classifier.
-feature_layers = [6, 12]
-# A voice-bank label needs at least this many clips to be trained.
-min_clips_per_label = 3
-
-[recording]
-# Input device: "" = system default, or a name substring / index from `vc devices`.
-device = ""
-# Incoming call audio, from a loopback input such as "BlackHole 2ch" (macOS) or "CABLE Output" /
-# "Stereo Mix" (Windows). With one, every recording is a stereo file: left = your microphone,
-# right = the incoming audio. "auto" = use the first loopback input found (if there is none,
-# only your microphone is recorded), "off" = microphone only, or a device name / index.
-# `vc record start --system-device <name>` overrides it for one recording.
-system_device = "auto"
-samplerate = 16000
-channels = 1
-max_minutes = 180
-
-[conversation]
-# Conversation mode (`vc discuss`, the voice-discuss skill): talk out loud with the agent.
-# Speech recognition model for your side; "" = the [transcription] model.
-stt_model = ""
-beam_size = 3
-# Languages you use in conversations, e.g. ["cs", "en"]: detection then only picks
-# among these. Empty = any language. Ignored when [general] language is set.
-languages = []
-# Seconds of silence that end your turn. Raise it if the agent cuts in while you think.
-end_silence_seconds = 1.4
-# Speech shorter than this (coughs, "hm") is ignored.
-min_speech_seconds = 0.4
-# Let you interrupt the agent by talking over it. Turn on only with headphones:
-# through speakers the agent would hear itself.
-barge_in = false
-# A short sound when your turn has been captured.
-earcon = true
-# Text-to-speech: "system" = macOS `say`, Windows SAPI voices, Linux espeak-ng.
-tts = "system"
-# "elevenlabs" = natural voices from ElevenLabs (free tier available). Only the text of the
-# agent's replies is sent, never your audio. The API key is read from the environment
-# variable ELEVENLABS_API_KEY (never put it in this file). Falls back to the system voice.
-elevenlabs_voice_id = ""
-# "eleven_flash_v2_5" = fast and cheap; "eleven_multilingual_v2" = best quality.
-elevenlabs_model = "eleven_flash_v2_5"
-# 1.0 = the voice's normal speed.
-speech_rate = 1.0
-# Output device: "" = system default, or a name substring / index.
-output_device = ""
-# Stop listening when the agent has not asked for a turn for this long.
-idle_minutes = 5
-max_minutes = 180
-# Conversations are kept as text only (transcript.md): each turn is transcribed as you speak.
-# true = also save your side as mic.wav, needed for the voice analysis of `vc discuss stop --analyze`.
-# `vc discuss start --keep-audio` turns it on for one conversation.
-keep_audio = false
-
-[conversation.voices]
-# Voice per language, a name from `vc discuss voices`. Missing = best installed voice.
-# en = "Ava (Premium)"
-# cs = "Zuzana (Premium)"
-
-[analysis]
-# Gaps inside your turn longer than this count as pauses.
-pause_seconds = 0.6
-long_pause_seconds = 2.0
-
-[analysis.fillers]
-en = ["um", "uh", "erm", "er", "hmm", "mm", "like", "basically", "actually", "literally", "you know", "i mean", "kind of", "sort of"]
-cs = ["ehm", "hm", "eee", "jako", "prostě", "vlastně", "takže", "tak nějak", "jakoby", "no"]
-"""
+EXAMPLE_CONFIG_NAME = "config.example.toml"
 
 
 class VoiceControllerError(Exception):
@@ -175,7 +72,7 @@ class Paths:
         ):
             p.mkdir(parents=True, exist_ok=True)
         if not self.config_file.exists():
-            self.config_file.write_text(DEFAULT_CONFIG_TOML, encoding="utf-8")
+            self.config_file.write_text(default_config_toml(), encoding="utf-8")
         return self
 
 
@@ -192,6 +89,20 @@ def get_paths() -> Paths:
         pr = project_root()
         root = pr / "data" if pr else Path.cwd() / "data"
     return Paths(root.resolve())
+
+
+@functools.cache
+def default_config_toml() -> str:
+    """The defaults, with a comment on every key: data/config.example.toml, tracked in git.
+    It is looked up in the project's data folder, then in the active data folder (Docker
+    mounts ./data as /data, so the example comes along)."""
+    pr = project_root()
+    candidates = [pr / "data" / EXAMPLE_CONFIG_NAME if pr else None, get_paths().root / EXAMPLE_CONFIG_NAME]
+    for f in candidates:
+        if f and f.is_file():
+            return f.read_text(encoding="utf-8")
+    looked = ", ".join(str(f) for f in candidates if f)
+    raise VoiceControllerError(f"{EXAMPLE_CONFIG_NAME} not found (looked in {looked}).")
 
 
 def load_dotenv() -> None:
@@ -262,7 +173,7 @@ def _deep_merge(base: dict, extra: dict) -> dict:
 
 
 def load_config(paths: Paths) -> dict[str, Any]:
-    cfg = tomllib.loads(DEFAULT_CONFIG_TOML)
+    cfg = tomllib.loads(default_config_toml())
     if paths.config_file.exists():
         try:
             user = tomllib.loads(paths.config_file.read_text(encoding="utf-8"))
