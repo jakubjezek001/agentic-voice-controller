@@ -86,14 +86,15 @@ def cmd_doctor(args, paths: Paths, cfg: dict) -> int:
 
 
 def cmd_devices(args, paths, cfg) -> int:
-    from agentic_voice_controller.recorder import list_input_devices
+    from agentic_voice_controller.recorder import is_loopback, list_input_devices
 
     devs = list_input_devices()
     if args.json:
         _print_json(devs)
     else:
         for d in devs:
-            print(f"{'*' if d['default'] else ' '} {d['index']:>3}  {d['name']}  ({d['channels']} ch, {d['samplerate']} Hz)")
+            tag = "  <- incoming call audio (loopback)" if is_loopback(d["name"]) else ""
+            print(f"{'*' if d['default'] else ' '} {d['index']:>3}  {d['name']}  ({d['channels']} ch, {d['samplerate']} Hz){tag}")
         print("\n* = default. Set [recording] device in data/config.toml, or pass --device.")
     return 0
 
@@ -131,6 +132,10 @@ def cmd_record_start(args, paths, cfg) -> int:
                   "Stop with `vc record stop`.")
         else:
             print(f"device: {st.get('device')}. Stop with `vc record stop`.")
+            spec = args.system_device if args.system_device is not None else cfg["recording"].get("system_device", "")
+            if str(spec).strip().lower() == "auto":
+                print("Microphone only (mono): no loopback input (BlackHole, VB-Cable, Stereo Mix) was found, "
+                      "so the other side is not recorded. See README > Recording calls.")
     return 0
 
 
@@ -140,8 +145,6 @@ def cmd_record_stop(args, paths, cfg) -> int:
     last = recorder.stop(paths)
     f = Path(last["file"])
     out = {"file": str(f), "seconds": last.get("seconds")}
-    if args.split and recorder.sides_file(f).exists():  # two-sided: also one file per side
-        out["tracks"] = {k: str(v) for k, v in recorder.split_sides(f).items()}
     if args.inbox:
         from agentic_voice_controller.recorder import sides_file
 
@@ -159,8 +162,6 @@ def cmd_record_stop(args, paths, cfg) -> int:
         _print_json(out)
     else:
         print(f"Stopped. {out['seconds']} s saved to {out['file']}")
-        if out.get("tracks"):
-            print(f"you: {out['tracks']['me']}\nothers: {out['tracks']['others']}")
         if out.get("session"):
             print(f"Session: {out['session']}")
     return 0
@@ -192,20 +193,6 @@ def cmd_record_status(args, paths, cfg) -> int:
     return 0
 
 
-def cmd_record_split(args, paths, cfg) -> int:
-    from agentic_voice_controller.recorder import RecorderError, split_sides
-
-    f = Path(args.file).expanduser()
-    if not f.is_file():
-        raise RecorderError(f"File not found: {f}")
-    tracks = split_sides(f)
-    if args.json:
-        _print_json({k: str(v) for k, v in tracks.items()})
-    else:
-        print(f"you: {tracks['me']}\nothers: {tracks['others']}")
-    return 0
-
-
 def cmd_record_run(args, paths, cfg) -> int:
     from agentic_voice_controller.recorder import run_background
 
@@ -226,7 +213,7 @@ def cmd_talk_start(args, paths, cfg) -> int:
     from agentic_voice_controller import talk
 
     st = talk.start(paths, cfg, name=args.name, barge_in=args.barge_in, language=args.language,
-                    device=args.device, input_file=args.input_file, tts=args.tts)
+                    device=args.device, input_file=args.input_file, tts=args.tts, keep_audio=args.keep_audio)
     st.pop("token", None)
     if args.json:
         _print_json(st)
@@ -289,6 +276,9 @@ def cmd_talk_stop(args, paths, cfg) -> int:
     from agentic_voice_controller import talk
 
     res = talk.stop(paths, _text_arg(args.say), args.lang)
+    if args.analyze and not (res.get("audio") and Path(res["audio"]).exists()):
+        res["note"] = ("no voice analysis: no audio was kept, only the text. Start the conversation with "
+                       "`vc talk start --keep-audio` to get one.")
     if args.analyze and res.get("audio") and Path(res["audio"]).exists():
         from agentic_voice_controller.pipeline import analyze
 
@@ -310,6 +300,8 @@ def cmd_talk_stop(args, paths, cfg) -> int:
     print(f"folder: {res.get('dir')}\n  transcript: {res.get('transcript')}")
     if res.get("audio"):
         print(f"  your audio: {res['audio']}")
+    if res.get("note"):
+        print(f"  note: {res['note']}")
     if res.get("session"):
         print(f"  voice analysis: {res['session']}/report.md")
     return 0
@@ -360,8 +352,9 @@ def cmd_talk_run(args, paths, cfg) -> int:
     from agentic_voice_controller.talk import run_daemon
 
     barge = None if args.barge_in is None else args.barge_in == "1"
+    keep = None if args.keep_audio is None else args.keep_audio == "1"
     run_daemon(paths, cfg, Path(args.dir), name=args.name, barge_in=barge, language=args.language,
-               device=args.device, input_file=args.input_file, tts=args.tts)
+               device=args.device, input_file=args.input_file, tts=args.tts, keep_audio=keep)
     return 0
 
 
@@ -530,25 +523,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--name", help="short label for the recording, e.g. client-call")
     s.add_argument("--device", help="input device name substring or index")
     s.add_argument("--system-device", dest="system_device",
-                   help="loopback input with the incoming call audio (e.g. 'BlackHole 2ch'): records both sides "
-                        "as two channels. 'off' = microphone only")
+                   help="loopback input with the incoming call audio (default: auto-detect, see recording.system_device): "
+                        "records both sides as one stereo file, left = you, right = others. 'off' = microphone only")
     s.add_argument("--max-minutes", type=float)
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_record_start)
     s = rs.add_parser("stop")
     s.add_argument("--analyze", action="store_true", help="analyze the recording right away")
-    s.add_argument("--split", action="store_true",
-                   help="two-sided recording: also write one file per side (<name>.tracks/me.wav, others.wav)")
     s.add_argument("--inbox", action="store_true", help="hand the recording to the inbox watcher (Docker)")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_record_stop)
     s = rs.add_parser("status")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_record_status)
-    s = rs.add_parser("split", help="split a two-sided recording into one file per side (me.wav, others.wav)")
-    s.add_argument("file")
-    s.add_argument("--json", action="store_true")
-    s.set_defaults(func=cmd_record_split)
     s = rs.add_parser("_run")
     s.add_argument("--out", required=True)
     s.add_argument("--device")
@@ -563,6 +550,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--barge-in", dest="barge_in", action="store_true", default=None,
                    help="let the user interrupt the agent (headphones only)")
     s.add_argument("--no-barge-in", dest="barge_in", action="store_false")
+    s.add_argument("--keep-audio", dest="keep_audio", action="store_true", default=None,
+                   help="also save your side as mic.wav, needed for a voice analysis at the end "
+                        "(default: only the text is kept)")
+    s.add_argument("--no-keep-audio", dest="keep_audio", action="store_false")
     s.add_argument("--language", help="fix the language, e.g. cs or en (default: settings / detect)")
     s.add_argument("--device", help="input device name substring or index")
     s.add_argument("--input-file", help=argparse.SUPPRESS)
@@ -598,6 +589,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--dir", required=True)
     s.add_argument("--name")
     s.add_argument("--barge-in", choices=["0", "1"])
+    s.add_argument("--keep-audio", choices=["0", "1"])
     s.add_argument("--language")
     s.add_argument("--device")
     s.add_argument("--input-file")

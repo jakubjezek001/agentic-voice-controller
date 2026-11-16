@@ -69,7 +69,7 @@ data/
   sessions/<id>/       one folder per analyzed recording:
                        original.*, transcript.md, report.md, analysis.json, coaching.md
   conversations/<id>/  one folder per spoken conversation with the agent:
-                       transcript.md, conversation.json, mic.wav (your side), notes.md
+                       transcript.md, conversation.json, notes.md (mic.wav only if you keep the audio)
   voicebank/<label>/   clips of YOUR voice per emotion (calm, stressed, ...)
   voicebank/_voice/    clips used only to learn your voice
   models/              your voice profile and personal emotion model
@@ -130,7 +130,9 @@ agent's voice <── speakers <── system voice <── `vc talk turn --say`
   English switch automatically).
 - `vc talk stop` ends it. The agent then writes `notes.md` (ideas, decisions, open
   questions, next steps) next to the transcript in `data/conversations/<id>/`.
-  `--analyze` also runs the normal voice report on your side of the conversation.
+  Conversations are kept as text: every turn is transcribed as you speak, and no audio is
+  saved. To get a voice report on how you spoke, start with `vc talk start --keep-audio`
+  (or set `conversation.keep_audio = true`) and end with `vc talk stop --analyze`.
 - With headphones, `--barge-in` (or `barge_in = true`) lets you interrupt the agent by
   talking over it. With speakers, leave it off: the microphone is muted while the agent
   talks, so it doesn't hear itself.
@@ -168,22 +170,22 @@ because Docker runs the models in a Linux VM on CPU only.
 - On this computer: `vc record start` records the default microphone. With headphones
   that is only your side, which is fine for your delivery but loses the other person.
 - Both sides of a computer call (Google Meet, Zoom, ...), as two separate streams: route the
-  call audio into a loopback device and name it with `--system-device` (or set
-  `recording.system_device`). The file then has two channels: **channel 1 = your microphone,
-  channel 2 = the incoming audio**. The analysis transcribes each channel on its own, so
+  call audio into a loopback device. `vc record start` finds it by itself (BlackHole,
+  VB-Cable, "Stereo Mix", ...; `recording.system_device = "auto"` is the default) and records
+  stereo: **left = your microphone, right = the incoming audio**. Without a loopback device
+  only your microphone is recorded. The analysis transcribes each channel on its own, so
   who said what is exact (no guessing from the voice) and each side can be in its own
   language. Pitch, loudness and emotion are measured on each person's own channel.
 
   macOS (BlackHole): `brew install blackhole-2ch`, then in Audio MIDI Setup create a
   **Multi-Output Device** with your headphones/headset and BlackHole 2ch, and make it the
   system output (you still hear the call). Then
-  `vc record start --device "<your mic>" --system-device "BlackHole 2ch"`.
+  `vc record start` (add `--device "<your mic>"` if the default mic is not the one you use).
   Windows: VB-Cable or "Stereo Mix" as the system device.
 
-  The recording is one stereo file: **left = you, right = others**. It is what `vc analyze`
-  reads and it plays with you in one ear and them in the other. If you need one file per
-  side (to share or edit one of them), use `vc record stop --split` or
-  `vc record split <file>`: they write `<name>.tracks/me.wav` and `<name>.tracks/others.wav`.
+  The recording is one stereo file: **left = you, right = others**, and that is the only
+  file kept. It plays with you in one ear and them in the other, and `vc analyze` splits the
+  channels in memory (no extra files are written).
 
   Use a headset or headphones. With open speakers the microphone also picks up the other
   person, which blurs the two sides. All other people on the incoming stream count as
@@ -199,7 +201,7 @@ because Docker runs the models in a Linux VM on CPU only.
 - `general.speakers`: people in a typical recording (1 for solo practice)
 - `transcription.model`: `small` (fast) ... `large-v3-turbo` (best)
 - `recording.device`: microphone name substring or index
-- `recording.system_device`: loopback input with the incoming call audio, e.g. `"BlackHole 2ch"`
+- `recording.system_device`: `"auto"` (default: first loopback input found), `"off"`, or a name such as `"BlackHole 2ch"`
 - `analysis.fillers.<lang>`: your filler words
 
 ## Platform notes

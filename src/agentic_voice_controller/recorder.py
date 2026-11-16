@@ -186,31 +186,6 @@ def sides_file(audio_file: Path) -> Path:
     return audio_file.with_suffix(".sides.json")
 
 
-def split_sides(audio_file: Path) -> dict[str, Path]:
-    """Write the two channels of a two-sided recording as separate mono files:
-    `call.wav` -> `call.tracks/me.wav` (your microphone) and `call.tracks/others.wav` (incoming audio)."""
-    folder = audio_file.with_name(audio_file.stem + ".tracks")
-    out = {"me": folder / "me.wav", "others": folder / "others.wav"}
-    with wave.open(str(audio_file), "rb") as src:
-        if src.getnchannels() != 2 or src.getsampwidth() != 2:
-            raise RecorderError(f"{audio_file.name} is not a two-channel 16-bit recording.")
-        rate = src.getframerate()
-        folder.mkdir(exist_ok=True)
-        with wave.open(str(out["me"]), "wb") as a, wave.open(str(out["others"]), "wb") as b:
-            for w in (a, b):
-                w.setnchannels(1)
-                w.setsampwidth(2)
-                w.setframerate(rate)
-            while True:
-                buf = src.readframes(rate * 30)
-                if not buf:
-                    break
-                x = np.frombuffer(buf, dtype="<i2").reshape(-1, 2)
-                a.writeframes(np.ascontiguousarray(x[:, SIDES["ME"]]).astype("<i2").tobytes())
-                b.writeframes(np.ascontiguousarray(x[:, SIDES["OTHER"]]).astype("<i2").tobytes())
-    return out
-
-
 class _ToMono:
     """Blocks of int16 (frames, channels) at the device rate -> mono int16 at the target rate."""
 
@@ -402,10 +377,28 @@ def start(paths: Paths, cfg: dict, name: str | None = None, device: str | None =
     raise RecorderError("The recorder did not start.\n" + _log_tail(paths))
 
 
+LOOPBACK_HINTS = ("blackhole", "soundflower", "loopback", "vb-cable", "cable output", "stereo mix", "monitor of")
+
+
+def is_loopback(name: str) -> bool:
+    """Does this input device name look like a loopback that carries the computer's output?"""
+    n = name.lower()
+    return any(h in n for h in LOOPBACK_HINTS)
+
+
+def find_loopback() -> int | None:
+    """The first input device that looks like a loopback (BlackHole, VB-Cable, Stereo Mix, ...)."""
+    return next((d["index"] for d in list_input_devices() if is_loopback(d["name"])), None)
+
+
 def resolve_system_device(spec: str | int | None) -> int | None:
-    """The loopback input for the incoming audio; None (or "off") means microphone only."""
-    if spec is None or str(spec).strip().lower() in ("", "off", "none"):
+    """The loopback input for the incoming audio. "auto" (the default) takes the first loopback
+    device found; "off" or "" means microphone only. A name or index picks a device."""
+    text = "" if spec is None else str(spec).strip().lower()
+    if text in ("", "off", "none"):
         return None
+    if text == "auto":
+        return find_loopback()
     return resolve_device(spec)
 
 
